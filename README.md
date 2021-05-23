@@ -17,7 +17,13 @@ It is a [Maven](https://maven.apache.org/) based project, so you can open this p
  * `cdk docs`        open CDK documentation
 
 ## Todo
-[] - Create VPC network
-[] - Create ETH1 Instance
-[] - Create ETH2 Instance
-[] - Join test net
+
+Continue following [this](https://someresat.medium.com/guide-to-staking-on-ethereum-2-0-ubuntu-pyrmont-lighthouse-a634d3b87393) guide.
+
+[X] - Create VPC network
+
+[ ] - Create ETH1 Instance
+
+[ ] - Create ETH2 Instance
+
+[ ] - Join test net
