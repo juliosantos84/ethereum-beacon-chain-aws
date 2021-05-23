@@ -54,6 +54,12 @@
             <version>${cdk.version}</version>
         </dependency>
         <dependency>
+            <groupId>software.amazon.awscdk</groupId>
+            <artifactId>elasticloadbalancingv2</artifactId>
+            <version>${cdk.version}</version>
+        </dependency>
+        <!-- Test Dependencies -->
+        <dependency>
           <groupId>org.junit.jupiter</groupId>
           <artifactId>junit-jupiter-api</artifactId>
           <version>${junit.version}</version>
