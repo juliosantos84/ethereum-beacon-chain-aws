@@ -27,6 +27,7 @@ import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
+import software.amazon.awscdk.services.ec2.UserData;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListener;
@@ -76,22 +77,18 @@ public class Eth2Stack extends Stack {
         backendAsgSecurityGroup.addIngressRule(Peer.ipv4("10.1.0.0/16"), Port.tcp(80)); // TEST
 
         // User data
-        // UserData userdata = UserData.forLinux();
-        // userdata.addCommands("sudo add-apt-repository -y ppa:ethereum/ethereum",
-        //             "sudo apt update",
-        //             "sudo apt install -y geth",
-        //             "sudo useradd --no-create-home --shell /bin/false goeth",
-        //             "sudo mkdir -p /var/lib/goethereum",
-        //             "sudo chown -R goeth:goeth /var/lib/goethereum",
-        //             ""
-        //             );
+        UserData userdata = UserData.forLinux();
+        userdata.addCommands("curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz && tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/ && ln -s /tmp/aws-cfn-bootstrap-2.0/init/ubuntu/cfn-hup /etc/init.d/cfn-hup",
+            "sudo add-apt-repository -y ppa:ethereum/ethereum",
+            "sudo apt update");
         
         // Autoscaling group for ETH backend
         AutoScalingGroup backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
             .vpc(vpc)
             .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
-            .desiredCapacity(Integer.valueOf(1))
-            .minCapacity(Integer.valueOf(1))
+            .desiredCapacity(Integer.valueOf(0))
+            .minCapacity(Integer.valueOf(0))
+            .maxCapacity(Integer.valueOf(1))
             .allowAllOutbound(Boolean.TRUE)
             .securityGroup(backendAsgSecurityGroup)
             .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
@@ -104,12 +101,12 @@ public class Eth2Stack extends Stack {
                 }}))
             .init(CloudFormationInit.fromElements(
                 // InitFile.fromUrl("aws-cfn.tar.gz", "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"),
-                InitPackage.apt("aws-cfn-bootstrap"),
-                InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
-                InitCommand.shellCommand("sudo apt update"),
+                // InitPackage.apt("aws-cfn-bootstrap"),
+                // InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
+                // InitCommand.shellCommand("sudo apt update"),
                 // InitCommand.shellCommand("sudo apt install geth"),
                 InitPackage.apt("geth"),
-                InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
+                // InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
                 InitUser.fromName("goeth", 
                     InitUserOptions.builder()
@@ -124,11 +121,11 @@ public class Eth2Stack extends Stack {
                 )).signals(Signals.waitForAll(
                     SignalsOptions.builder().timeout(
                         Duration.minutes(Integer.valueOf(5))).build()))
-            // .userData(userdata)
+            .userData(userdata)
             .initOptions(ApplyCloudFormationInitOptions.builder().build())
             .build();
 
-        // userdata.addSignalOnExitCommand(backendAsg);
+        userdata.addSignalOnExitCommand(backendAsg);
 
         NetworkListener goEthListener = publicLb.addListener("goEth", 
             NetworkListenerProps.builder()
