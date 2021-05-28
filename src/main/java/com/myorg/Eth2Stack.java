@@ -4,9 +4,20 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import software.amazon.awscdk.core.Construct;
+import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
+import software.amazon.awscdk.services.autoscaling.ApplyCloudFormationInitOptions;
 import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
+import software.amazon.awscdk.services.autoscaling.Signals;
+import software.amazon.awscdk.services.autoscaling.SignalsOptions;
+import software.amazon.awscdk.services.ec2.CloudFormationInit;
+import software.amazon.awscdk.services.ec2.InitCommand;
+import software.amazon.awscdk.services.ec2.InitFile;
+import software.amazon.awscdk.services.ec2.InitPackage;
+import software.amazon.awscdk.services.ec2.InitService;
+import software.amazon.awscdk.services.ec2.InitUser;
+import software.amazon.awscdk.services.ec2.InitUserOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -43,7 +54,7 @@ public class Eth2Stack extends Stack {
         Vpc vpc = Vpc.Builder.create(this, "EthVpc")
             .cidr("10.1.0.0/16")
             .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
-            .maxAzs(Integer.valueOf(3))
+            .maxAzs(Integer.valueOf(1))
             .build();
 
         // Configure a load balancer and ec2 ASG
@@ -64,6 +75,17 @@ public class Eth2Stack extends Stack {
         backendAsgSecurityGroup.addIngressRule(Peer.ipv4("10.1.0.0/16"), Port.udp(GOETH_PORT));
         backendAsgSecurityGroup.addIngressRule(Peer.ipv4("10.1.0.0/16"), Port.tcp(80)); // TEST
 
+        // User data
+        // UserData userdata = UserData.forLinux();
+        // userdata.addCommands("sudo add-apt-repository -y ppa:ethereum/ethereum",
+        //             "sudo apt update",
+        //             "sudo apt install -y geth",
+        //             "sudo useradd --no-create-home --shell /bin/false goeth",
+        //             "sudo mkdir -p /var/lib/goethereum",
+        //             "sudo chown -R goeth:goeth /var/lib/goethereum",
+        //             ""
+        //             );
+        
         // Autoscaling group for ETH backend
         AutoScalingGroup backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
             .vpc(vpc)
@@ -73,14 +95,40 @@ public class Eth2Stack extends Stack {
             .allowAllOutbound(Boolean.TRUE)
             .securityGroup(backendAsgSecurityGroup)
             .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
+            // .signals(Signals.waitForMinCapacity())
             .machineImage(MachineImage.genericLinux(
                 new HashMap<String, String>(){
                 {
                     put("us-east-1", "ami-0db6c6238a40c0681");
                     put("us-east-2", "ami-03b6c8bd55e00d5ed");
-                }
-            }))
+                }}))
+            .init(CloudFormationInit.fromElements(
+                // InitFile.fromUrl("aws-cfn.tar.gz", "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"),
+                InitPackage.apt("aws-cfn-bootstrap"),
+                InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
+                InitCommand.shellCommand("sudo apt update"),
+                // InitCommand.shellCommand("sudo apt install geth"),
+                InitPackage.apt("geth"),
+                InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
+                InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
+                InitUser.fromName("goeth", 
+                    InitUserOptions.builder()
+                        .groups(Arrays.asList("goeth")).build()),
+                InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
+                InitFile.fromAsset("/etc/systemd/system/geth.service", "geth.service"),
+                InitService.enable("geth")
+                // InitCommand.shellCommand("sudo systemctl daemon-reload"),
+                // InitCommand.shellCommand("sudo systemctl start geth"),
+                // InitCommand.shellCommand("/opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackId} --resource TestInstance --region ${AWS::Region}")
+                // InitCommand.shellCommand("sudo systemctl status geth")
+                )).signals(Signals.waitForAll(
+                    SignalsOptions.builder().timeout(
+                        Duration.minutes(Integer.valueOf(5))).build()))
+            // .userData(userdata)
+            .initOptions(ApplyCloudFormationInitOptions.builder().build())
             .build();
+
+        // userdata.addSignalOnExitCommand(backendAsg);
 
         NetworkListener goEthListener = publicLb.addListener("goEth", 
             NetworkListenerProps.builder()
