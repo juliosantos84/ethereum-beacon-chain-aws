@@ -51,6 +51,12 @@ public class Eth2Stack extends Stack {
 
     public static final IPeer   VPC_CIDR_PEER = Peer.ipv4(VPC_CIDR);
 
+    private Vpc vpc = null;
+    private NetworkLoadBalancer publicLb = null;
+    private SecurityGroup backendAsgSecurityGroup = null;
+    private UserData userdata = null;
+    private AutoScalingGroup backendAsg = null;
+
     public Eth2Stack(final Construct scope, final String id) {
         this(scope, id, null);
     }
@@ -59,61 +65,17 @@ public class Eth2Stack extends Stack {
         super(scope, id, props);
 
         // Configure a VPC
-        Vpc vpc = Vpc.Builder.create(this, "EthVpc")
+        this.vpc = Vpc.Builder.create(this, "EthVpc")
             .cidr(VPC_CIDR)
             .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
             .maxAzs(Integer.valueOf(1))
             .build();
 
         // Configure a load balancer and ec2 ASG
-        NetworkLoadBalancer publicLb = NetworkLoadBalancer.Builder.create(this, "publicLb")
-            .vpc(vpc)
-            .vpcSubnets(
-                SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build()
-            )
-            .internetFacing(Boolean.TRUE)
-            .crossZoneEnabled(Boolean.TRUE)
-            .build();
+        initPublicLoadBalancer();
 
-        SecurityGroup backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
-            .vpc(vpc)
-            .build();
-
-        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(GOETH_PORT));
-        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.udp(GOETH_PORT));
-        backendAsgSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22)); // TEST
-        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(22)); // TEST
-
-        // User data to bootstrap the instance
-        UserData userdata = getEth2NodeUserData();
-        
         // Autoscaling group for ETH backend
-        AutoScalingGroup backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
-            .vpc(vpc)
-            .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
-            // .desiredCapacity(Integer.valueOf(0))
-            .minCapacity(MIN_GETH_INSTANCES)
-            .desiredCapacity(Integer.valueOf(1))
-            .maxCapacity(MAX_GETH_INSTANCES)
-            .allowAllOutbound(Boolean.TRUE)
-            .securityGroup(backendAsgSecurityGroup)
-            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build())
-            // .signals(Signals.waitForMinCapacity())
-            .machineImage(MachineImage.genericLinux(
-                new HashMap<String, String>(){
-                {
-                    put("us-east-1", "ami-0db6c6238a40c0681");
-                    put("us-east-2", "ami-03b6c8bd55e00d5ed");
-                }}))
-            .init(getEth2NodeCloudInit())
-            .signals(Signals.waitForMinCapacity(
-                    SignalsOptions.builder().timeout(
-                        Duration.minutes(Integer.valueOf(1))).build()))
-            .userData(userdata)
-            .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
-            .build();
-        
-        userdata.addSignalOnExitCommand(backendAsg);
+        initBackendAsg();
 
         NetworkListener goEthListener = publicLb.addListener("goEth", 
             NetworkListenerProps.builder()
@@ -147,15 +109,66 @@ public class Eth2Stack extends Stack {
         
     }
 
+    private void initPublicLoadBalancer() {
+        this.publicLb = NetworkLoadBalancer.Builder.create(this, "publicLb")
+            .vpc(vpc)
+            .vpcSubnets(
+                SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build()
+            )
+            .internetFacing(Boolean.TRUE)
+            .crossZoneEnabled(Boolean.TRUE)
+            .build();
+    }
+
+    private void initBackendAsgSecurityGroup() {
+        this.backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
+            .vpc(vpc)
+            .build();
+
+        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(GOETH_PORT));
+        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.udp(GOETH_PORT));
+        backendAsgSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22)); // TEST
+        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(22)); // TEST
+    }
+
+    private void initBackendAsg() {
+        
+        initEth2NodeUserData();
+
+        initBackendAsgSecurityGroup();
+
+        backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
+            .vpc(vpc)
+            .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
+            // .desiredCapacity(Integer.valueOf(0))
+            .minCapacity(MIN_GETH_INSTANCES)
+            .desiredCapacity(Integer.valueOf(1))
+            .maxCapacity(MAX_GETH_INSTANCES)
+            .allowAllOutbound(Boolean.TRUE)
+            .securityGroup(backendAsgSecurityGroup)
+            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build())
+            // .signals(Signals.waitForMinCapacity())
+            .machineImage(MachineImage.genericLinux(
+                new HashMap<String, String>(){
+                {
+                    put("us-east-1", "ami-0db6c6238a40c0681");
+                    put("us-east-2", "ami-03b6c8bd55e00d5ed");
+                }}))
+            // .machineImage(MachineImage.latestAmazonLinux())
+            .init(getEth2NodeCloudInit())
+            .signals(Signals.waitForMinCapacity(
+                    SignalsOptions.builder().timeout(
+                        Duration.minutes(Integer.valueOf(1))).build()))
+            .userData(userdata)
+            .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
+            .build();
+        
+        this.userdata.addSignalOnExitCommand(backendAsg);
+    }
+
     private static CloudFormationInit getEth2NodeCloudInit() {
         return CloudFormationInit.fromElements(
-                // InitFile.fromUrl("aws-cfn.tar.gz", "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"),
-                // InitPackage.apt("aws-cfn-bootstrap"),
-                // InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
-                // InitCommand.shellCommand("sudo apt update"),
-                // InitCommand.shellCommand("sudo apt install geth"),
                 InitPackage.apt("geth"),
-                // InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
                 InitUser.fromName("goeth", 
                     InitUserOptions.builder()
@@ -184,20 +197,17 @@ public class Eth2Stack extends Stack {
             .build();
     }
 
-    public UserData getEth2NodeUserData() {
-        UserData userdata = UserData.forLinux();
+    public void initEth2NodeUserData() {
+        this.userdata = UserData.forLinux();
         userdata.addCommands(
+            "sudo mkdir -p /opt/aws",
+            "sudo chown -R ubuntu:users /opt/aws",
             "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
             "tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/",
-            "mv /tmp/aws-cfn-bootstrap-2.0 /opt/aws",
-            "sudo +x /opt/aws/bin",
+            "mv /tmp/aws-cfn-bootstrap-2.0/* /opt/aws",
             "cd /opt/aws",
-            "sudo python3 setup.py install",
-            // "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py",
-            // "python3 get-pip.py",
-            "ln -s /opt/aws/init/ubuntu/cfn-hup /etc/init.d/cfn-hup",
-            "sudo add-apt-repository -y ppa:ethereum/ethereum",
-            "sudo apt update");
-        return userdata;
+            "python3 setup.py install --prefix /opt/aws",
+            "chmod +x /opt/aws/bin/*",
+            "sudo ln -s /opt/aws/bin/cfn-hup /etc/init.d/cfn-hup");
     }
 }
