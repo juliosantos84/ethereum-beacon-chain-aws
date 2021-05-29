@@ -12,6 +12,7 @@ import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
 import software.amazon.awscdk.services.autoscaling.Signals;
 import software.amazon.awscdk.services.autoscaling.SignalsOptions;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
+import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitFile;
 import software.amazon.awscdk.services.ec2.InitPackage;
@@ -44,6 +45,12 @@ public class Eth2Stack extends Stack {
     public static final Integer LIGHTHOUSE_PORT = Integer.valueOf(9000);
     public static final Integer GRAFANA_PORT = Integer.valueOf(3000);
 
+    public static final String  VPC_CIDR = "10.1.0.0/16";
+    public static final Integer MIN_GETH_INSTANCES = Integer.valueOf(0);
+    public static final Integer MAX_GETH_INSTANCES = Integer.valueOf(1);
+
+    public static final IPeer   VPC_CIDR_PEER = Peer.ipv4(VPC_CIDR);
+
     public Eth2Stack(final Construct scope, final String id) {
         this(scope, id, null);
     }
@@ -53,7 +60,7 @@ public class Eth2Stack extends Stack {
 
         // Configure a VPC
         Vpc vpc = Vpc.Builder.create(this, "EthVpc")
-            .cidr("10.1.0.0/16")
+            .cidr(VPC_CIDR)
             .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
             .maxAzs(Integer.valueOf(1))
             .build();
@@ -72,26 +79,25 @@ public class Eth2Stack extends Stack {
             .vpc(vpc)
             .build();
 
-        backendAsgSecurityGroup.addIngressRule(Peer.ipv4("10.1.0.0/16"), Port.tcp(GOETH_PORT));
-        backendAsgSecurityGroup.addIngressRule(Peer.ipv4("10.1.0.0/16"), Port.udp(GOETH_PORT));
-        backendAsgSecurityGroup.addIngressRule(Peer.ipv4("10.1.0.0/16"), Port.tcp(80)); // TEST
+        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(GOETH_PORT));
+        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.udp(GOETH_PORT));
+        backendAsgSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22)); // TEST
+        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(22)); // TEST
 
-        // User data
-        UserData userdata = UserData.forLinux();
-        userdata.addCommands("curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz && tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/ && ln -s /tmp/aws-cfn-bootstrap-2.0/init/ubuntu/cfn-hup /etc/init.d/cfn-hup",
-            "sudo add-apt-repository -y ppa:ethereum/ethereum",
-            "sudo apt update");
+        // User data to bootstrap the instance
+        UserData userdata = getEth2NodeUserData();
         
         // Autoscaling group for ETH backend
         AutoScalingGroup backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
             .vpc(vpc)
             .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
-            .desiredCapacity(Integer.valueOf(0))
-            .minCapacity(Integer.valueOf(0))
-            .maxCapacity(Integer.valueOf(1))
+            // .desiredCapacity(Integer.valueOf(0))
+            .minCapacity(MIN_GETH_INSTANCES)
+            .desiredCapacity(Integer.valueOf(1))
+            .maxCapacity(MAX_GETH_INSTANCES)
             .allowAllOutbound(Boolean.TRUE)
             .securityGroup(backendAsgSecurityGroup)
-            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
+            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build())
             // .signals(Signals.waitForMinCapacity())
             .machineImage(MachineImage.genericLinux(
                 new HashMap<String, String>(){
@@ -99,32 +105,14 @@ public class Eth2Stack extends Stack {
                     put("us-east-1", "ami-0db6c6238a40c0681");
                     put("us-east-2", "ami-03b6c8bd55e00d5ed");
                 }}))
-            .init(CloudFormationInit.fromElements(
-                // InitFile.fromUrl("aws-cfn.tar.gz", "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"),
-                // InitPackage.apt("aws-cfn-bootstrap"),
-                // InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
-                // InitCommand.shellCommand("sudo apt update"),
-                // InitCommand.shellCommand("sudo apt install geth"),
-                InitPackage.apt("geth"),
-                // InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
-                InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
-                InitUser.fromName("goeth", 
-                    InitUserOptions.builder()
-                        .groups(Arrays.asList("goeth")).build()),
-                InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
-                InitFile.fromAsset("/etc/systemd/system/geth.service", "geth.service"),
-                InitService.enable("geth")
-                // InitCommand.shellCommand("sudo systemctl daemon-reload"),
-                // InitCommand.shellCommand("sudo systemctl start geth"),
-                // InitCommand.shellCommand("/opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackId} --resource TestInstance --region ${AWS::Region}")
-                // InitCommand.shellCommand("sudo systemctl status geth")
-                )).signals(Signals.waitForAll(
+            .init(getEth2NodeCloudInit())
+            .signals(Signals.waitForMinCapacity(
                     SignalsOptions.builder().timeout(
-                        Duration.minutes(Integer.valueOf(5))).build()))
+                        Duration.minutes(Integer.valueOf(1))).build()))
             .userData(userdata)
-            .initOptions(ApplyCloudFormationInitOptions.builder().build())
+            .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
             .build();
-
+        
         userdata.addSignalOnExitCommand(backendAsg);
 
         NetworkListener goEthListener = publicLb.addListener("goEth", 
@@ -153,10 +141,40 @@ public class Eth2Stack extends Stack {
         NetworkTargetGroup testTargetGroup = testListener.addTargets("testTargets", 
             AddNetworkTargetsProps.builder()
                 .targets(Arrays.asList(backendAsg))
-                .port(Integer.valueOf(80))
+                .port(Integer.valueOf(22))
                 .build()
         );
         
+    }
+
+    private static CloudFormationInit getEth2NodeCloudInit() {
+        return CloudFormationInit.fromElements(
+                // InitFile.fromUrl("aws-cfn.tar.gz", "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"),
+                // InitPackage.apt("aws-cfn-bootstrap"),
+                // InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
+                // InitCommand.shellCommand("sudo apt update"),
+                // InitCommand.shellCommand("sudo apt install geth"),
+                InitPackage.apt("geth"),
+                // InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
+                InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
+                InitUser.fromName("goeth", 
+                    InitUserOptions.builder()
+                        .groups(Arrays.asList("goeth")).build()),
+                InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
+                InitFile.fromAsset("/etc/systemd/system/geth.service", "geth.service"),
+                InitService.enable("geth")
+                // InitCommand.shellCommand("sudo systemctl daemon-reload"),
+                // InitCommand.shellCommand("sudo systemctl start geth"),
+                // InitCommand.shellCommand("/opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackId} --resource ${ASG_RESOURCE} --region ${AWS::Region}", 
+                //     InitCommandOptions.builder()
+                //         .env(new HashMap<String, String>(){
+                //             {
+                //                 put("ASG_RESOURCE", "backendAsg");
+                //             }
+                //         })
+                //         .build())
+                // InitCommand.shellCommand("sudo systemctl status geth")
+                );
     }
 
     public static NetworkListenerProps getNetworkListenerProps(Protocol protocol, Integer port) {
@@ -164,5 +182,22 @@ public class Eth2Stack extends Stack {
             .protocol(protocol)
             .port(port)
             .build();
+    }
+
+    public UserData getEth2NodeUserData() {
+        UserData userdata = UserData.forLinux();
+        userdata.addCommands(
+            "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
+            "tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/",
+            "mv /tmp/aws-cfn-bootstrap-2.0 /opt/aws",
+            "sudo +x /opt/aws/bin",
+            "cd /opt/aws",
+            "sudo python3 setup.py install",
+            // "curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py",
+            // "python3 get-pip.py",
+            "ln -s /opt/aws/init/ubuntu/cfn-hup /etc/init.d/cfn-hup",
+            "sudo add-apt-repository -y ppa:ethereum/ethereum",
+            "sudo apt update");
+        return userdata;
     }
 }
