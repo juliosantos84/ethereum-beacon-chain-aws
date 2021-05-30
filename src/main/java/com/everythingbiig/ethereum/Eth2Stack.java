@@ -21,6 +21,7 @@ import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InitFile;
+import software.amazon.awscdk.services.ec2.InitFileAssetOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -227,8 +228,13 @@ public class Eth2Stack extends Stack {
                 InitCommand.shellCommand("sudo mount /dev/nvme1n1 /var/lib/goethereum"),
                 InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
-                InitFile.fromAsset("/etc/systemd/system/geth.service", "geth.service"),
-                InitFile.fromAsset("/home/ubuntu/unmount-volume.sh", "unmount-volume.sh"),
+                InitFile.fromAsset("/etc/systemd/system/geth.service", "src/main/resources/geth.service"),
+                InitFile.fromAsset("/home/ubuntu/unmount-volume.sh", "src/main/resources/unmount-volume.sh", 
+                    InitFileAssetOptions.builder()
+                        .owner("ubuntu")
+                        .group("ubuntu")
+                        .mode("755")
+                        .build()),
                 InitCommand.shellCommand("sudo systemctl daemon-reload"),
                 InitCommand.shellCommand("sudo systemctl start geth"),
                 InitCommand.shellCommand("sudo systemctl status geth")
