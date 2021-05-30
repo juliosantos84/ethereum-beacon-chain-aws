@@ -1,26 +1,26 @@
-package com.myorg;
+package com.everythingbiig.ethereum;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
+import software.amazon.awscdk.core.RemovalPolicy;
+import software.amazon.awscdk.core.Size;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.autoscaling.ApplyCloudFormationInitOptions;
 import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
-import software.amazon.awscdk.services.autoscaling.BlockDevice;
-import software.amazon.awscdk.services.autoscaling.BlockDeviceVolume;
-import software.amazon.awscdk.services.autoscaling.EbsDeviceOptions;
-import software.amazon.awscdk.services.autoscaling.EbsDeviceVolumeType;
 import software.amazon.awscdk.services.autoscaling.Signals;
 import software.amazon.awscdk.services.autoscaling.SignalsOptions;
 import software.amazon.awscdk.services.autoscaling.UpdatePolicy;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
 import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
+import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
+import software.amazon.awscdk.services.ec2.InitCommandOptions;
+import software.amazon.awscdk.services.ec2.InitCommandWaitDuration;
 import software.amazon.awscdk.services.ec2.InitFile;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
@@ -54,13 +54,14 @@ public class Eth2Stack extends Stack {
     public static final Integer MAX_GETH_INSTANCES = Integer.valueOf(1);
 
     public static final IPeer   VPC_CIDR_PEER = Peer.ipv4(VPC_CIDR);
+    public static final Size ETH_DATA_VOLUME_SIZE = Size.gibibytes(Integer.valueOf(2000));
 
     private Vpc vpc = null;
     private NetworkLoadBalancer publicLb = null;
     private SecurityGroup backendAsgSecurityGroup = null;
     private UserData userdata = null;
     private AutoScalingGroup backendAsg = null;
-    private Volume ethVolume = null;
+    private IVolume ethVolume = null;
 
     public Eth2Stack(final Construct scope, final String id) {
         this(scope, id, null);
@@ -75,25 +76,38 @@ public class Eth2Stack extends Stack {
             .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
             .maxAzs(Integer.valueOf(1))
             .build();
+        
+        // Configure a persistent volume for chain data
+        initEthVolume();
 
         // Autoscaling group for ETH backend
         initBackendAsg();
         
         // Configure a load balancer and ec2 ASG
         // initPublicLoadBalancer();
-        
+    }
+
+    private void initEthVolume() {
+        this.ethVolume = Volume.Builder.create(this, "ethVolume")
+            .volumeName("ethVolume")
+            .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
+            .size(ETH_DATA_VOLUME_SIZE)
+            .encrypted(Boolean.TRUE)
+            .removalPolicy(RemovalPolicy.SNAPSHOT)
+            .availabilityZone(this.vpc.getPublicSubnets().get(0).getAvailabilityZone())
+            .build();
     }
 
     private void initPublicLoadBalancer() {
         this.publicLb = NetworkLoadBalancer.Builder.create(this, "publicLb")
             .vpc(vpc)
-            .vpcSubnets(
-                SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build()
-            )
+            .vpcSubnets(SubnetSelection.builder()
+                .subnetType(SubnetType.PUBLIC).build())
             .internetFacing(Boolean.TRUE)
             .crossZoneEnabled(Boolean.TRUE)
             .build();
-            NetworkListener goEthListener = publicLb.addListener("goEth", 
+        
+        NetworkListener goEthListener = publicLb.addListener("goEth", 
             NetworkListenerProps.builder()
                 .protocol(Protocol.TCP_UDP)
                 .port(GOETH_PORT)
@@ -141,6 +155,7 @@ public class Eth2Stack extends Stack {
 
         backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
             .vpc(vpc)
+            // TODO Move to private subnets
             .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build())
             .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
             .machineImage(getMachineImage())
@@ -150,39 +165,19 @@ public class Eth2Stack extends Stack {
             .minCapacity(MIN_GETH_INSTANCES)
             .maxCapacity(MAX_GETH_INSTANCES)
             .allowAllOutbound(Boolean.TRUE)
-            .blockDevices(getBlockDevices())
             .securityGroup(backendAsgSecurityGroup)
             .updatePolicy(UpdatePolicy.rollingUpdate())
             .signals(Signals.waitForMinCapacity(
                     SignalsOptions.builder().timeout(
                         Duration.minutes(Integer.valueOf(1))).build()))
             .build();
+
         this.userdata.addSignalOnExitCommand(backendAsg);
-    }
 
-    private List<? extends BlockDevice> getBlockDevices() {
-        // this.ethVolume = Volume.Builder.create(this, "ethVolume")
-        //     .
-        //     .build();
-
-        return Arrays.asList(
-            BlockDevice.builder()
-            .volume(BlockDeviceVolume.ebs(8, 
-                EbsDeviceOptions.builder()
-                    .encrypted(Boolean.TRUE)
-                    .volumeType(EbsDeviceVolumeType.GP2)
-                    .build()))
-            .deviceName("/dev/sda1")
-            .build(),
-            BlockDevice.builder()
-                .volume(BlockDeviceVolume.ebs(2000, 
-                    EbsDeviceOptions.builder()
-                        .encrypted(Boolean.TRUE)
-                        .volumeType(EbsDeviceVolumeType.GP2)
-                        .deleteOnTermination(Boolean.FALSE)
-                        .build()))
-                .deviceName("/dev/sdb")
-                .build());
+        // Grant the backendAsg access to attacht he volume
+        this.ethVolume.grantAttachVolumeByResourceTag(
+            this.backendAsg.getGrantPrincipal(), 
+            Arrays.asList(this.backendAsg));
     }
 
     private static IMachineImage getMachineImage() {
@@ -194,12 +189,39 @@ public class Eth2Stack extends Stack {
             }});
     }
 
-    private static CloudFormationInit getEth2NodeCloudInit() {
+    private CloudFormationInit getEth2NodeCloudInit() {
         return CloudFormationInit.fromElements(
                 InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
                 InitCommand.shellCommand("sudo apt update"),
+                InitCommand.shellCommand("sudo apt install awscli -y"),
                 InitCommand.shellCommand("sudo apt install geth"),
-                // InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
+                InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
+                // Store the volume data
+                InitCommand.shellCommand("echo ${ETH_VOLUME_ID} > /home/ubuntu/eth-volume-id", 
+                    InitCommandOptions.builder().env(
+                        new HashMap<String, String>(){
+                            {
+                                put("ETH_VOLUME_ID", Eth2Stack.this.ethVolume.getVolumeId());
+                            }
+                        }).build()),
+                // Attach the eth data volume
+                InitCommand.shellCommand("aws ec2 attach-volume --device /dev/sdd --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id) --volume-id ${ETH_VOLUME_ID} --region ${ETH_VOLUME_REGION}",
+                    InitCommandOptions.builder().env(
+                        new HashMap<String, String>(){
+                            {
+                                put("ETH_VOLUME_ID", Eth2Stack.this.ethVolume.getVolumeId());
+                                put("ETH_VOLUME_REGION", Eth2Stack.this.getRegion());
+                            }
+                        })
+                        .waitAfterCompletion(InitCommandWaitDuration.of(Duration.seconds(3)))
+                        .build()),
+                // Format the volume, if needed
+                InitCommand.shellCommand("sudo file -s /dev/nvme1n1 | grep 'ext4' || sudo mkfs -t ext4 /dev/nvme1n1",
+                    InitCommandOptions.builder()
+                            .waitAfterCompletion(InitCommandWaitDuration.of(Duration.seconds(5)))
+                            .build()),
+                // Mount the volume
+                InitCommand.shellCommand("sudo mount /dev/nvme1n1 /var/lib/goethereum"),
                 InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
                 InitFile.fromAsset("/etc/systemd/system/geth.service", "geth.service"),
@@ -219,9 +241,15 @@ public class Eth2Stack extends Stack {
     public void initEth2NodeUserData() {
         this.userdata = UserData.forLinux();
         userdata.addCommands(
-            "sudo mkfs -t ext4 /dev/nvme1n1",
-            "sudo mkdir -p /var/lib/goethereum",
-            "sudo mount /dev/nvme1n1 /var/lib/goethereum",
+            // "sudo apt install awscli -y",
+            // "sudo mkdir -p /var/lib/goethereum",
+            "echo " + this.ethVolume.getVolumeId() + " > /home/ubuntu/eth-volume-id",
+            // Attach the volume
+            // "aws ec2 attach-volume --device /dev/sdd --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id) --volume-id $(cat /home/ubuntu/eth-volume-id) --region " + this.getRegion(),
+            // Format the volume if it's not ext4
+            // "sudo file -s /dev/nvme1n1 | grep 'ext4' || sudo mkfs -t ext4 /dev/nvme1n1",
+            // Mount the volume
+            // "sudo mount /dev/nvme1n1 /var/lib/goethereum",
             "sudo mkdir -p /opt/aws",
             "sudo chown -R ubuntu:users /opt/aws",
             "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",

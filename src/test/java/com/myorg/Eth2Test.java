@@ -1,14 +1,17 @@
 package com.myorg;
 
-import software.amazon.awscdk.core.App;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+
+import com.everythingbiig.ethereum.Eth2Stack;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import java.io.IOException;
-
 import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
+
+import software.amazon.awscdk.core.App;
 
 public class Eth2Test {
     private final static ObjectMapper JSON =
