@@ -20,7 +20,6 @@ import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitCommandOptions;
-import software.amazon.awscdk.services.ec2.InitCommandWaitDuration;
 import software.amazon.awscdk.services.ec2.InitFile;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
@@ -213,13 +212,13 @@ public class Eth2Stack extends Stack {
                                 put("ETH_VOLUME_REGION", Eth2Stack.this.getRegion());
                             }
                         })
-                        .waitAfterCompletion(InitCommandWaitDuration.of(Duration.seconds(3)))
                         .build()),
+                // Wait for volume to be attached
+                InitCommand.shellCommand("sleep 3"),
                 // Format the volume, if needed
-                InitCommand.shellCommand("sudo file -s /dev/nvme1n1 | grep 'ext4' || sudo mkfs -t ext4 /dev/nvme1n1",
-                    InitCommandOptions.builder()
-                            .waitAfterCompletion(InitCommandWaitDuration.of(Duration.seconds(5)))
-                            .build()),
+                InitCommand.shellCommand("sudo file -s /dev/nvme1n1 | grep 'ext4' || sudo mkfs -t ext4 /dev/nvme1n1"),
+                // Wait for the volume to be formatted
+                InitCommand.shellCommand("sleep 5"),
                 // Mount the volume
                 InitCommand.shellCommand("sudo mount /dev/nvme1n1 /var/lib/goethereum"),
                 InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
