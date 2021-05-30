@@ -255,15 +255,7 @@ public class Eth2Stack extends Stack {
     public void initEth2NodeUserData() {
         this.userdata = UserData.forLinux();
         userdata.addCommands(
-            // "sudo apt install awscli -y",
-            // "sudo mkdir -p /var/lib/goethereum",
             "echo " + this.ethVolume.getVolumeId() + " > /home/ubuntu/eth-volume-id",
-            // Attach the volume
-            // "aws ec2 attach-volume --device /dev/sdd --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id) --volume-id $(cat /home/ubuntu/eth-volume-id) --region " + this.getRegion(),
-            // Format the volume if it's not ext4
-            // "sudo file -s /dev/nvme1n1 | grep 'ext4' || sudo mkfs -t ext4 /dev/nvme1n1",
-            // Mount the volume
-            // "sudo mount /dev/nvme1n1 /var/lib/goethereum",
             "sudo mkdir -p /opt/aws",
             "sudo chown -R ubuntu:users /opt/aws",
             "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
