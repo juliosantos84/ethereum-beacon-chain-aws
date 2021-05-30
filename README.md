@@ -31,7 +31,10 @@ If two instances of the stack are running with the same keys then it's possible 
 ### Before deploying
 - Ensure the current state is in source control or can otherwise be redeployed
 - Ensure the changeset to be deployed is in source control
-
+- Ensure the target environment has been boostrapped:
+    - `cdk boostrap` must be run
+    - `ethBackendKeyPair` must be created in the console
+    
 ### Deploying
 To ensure we're never running two nodes at a time we must:
 1. Scale down the ASG to desired instance count = 0

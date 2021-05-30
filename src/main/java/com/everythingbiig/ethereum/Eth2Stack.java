@@ -45,23 +45,25 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 
 public class Eth2Stack extends Stack {
 
-    public static final Integer GOETH_PORT = Integer.valueOf(30303);
-    public static final Integer LIGHTHOUSE_PORT = Integer.valueOf(9000);
-    public static final Integer GRAFANA_PORT = Integer.valueOf(3000);
+    static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
+    static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
+    static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
+    static final Integer    SSH_PORT                    = Integer.valueOf(22);
 
-    public static final String  VPC_CIDR = "10.1.0.0/16";
-    public static final Integer MIN_GETH_INSTANCES = Integer.valueOf(0);
-    public static final Integer MAX_GETH_INSTANCES = Integer.valueOf(1);
+    static final String     VPC_CIDR                    = "10.1.0.0/16";
+    static final Integer    MIN_GETH_INSTANCES          = Integer.valueOf(0);
+    static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(1);
 
-    public static final IPeer   VPC_CIDR_PEER = Peer.ipv4(VPC_CIDR);
-    public static final Size ETH_DATA_VOLUME_SIZE = Size.gibibytes(Integer.valueOf(2000));
+    static final IPeer      VPC_CIDR_PEER               = Peer.ipv4(VPC_CIDR);
+    static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(2000));
+    static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
-    private Vpc vpc = null;
-    private NetworkLoadBalancer publicLb = null;
-    private SecurityGroup backendAsgSecurityGroup = null;
-    private UserData userdata = null;
-    private AutoScalingGroup backendAsg = null;
-    private IVolume ethVolume = null;
+    private Vpc                 vpc                     = null;
+    private NetworkLoadBalancer publicLb                = null;
+    private SecurityGroup       backendAsgSecurityGroup = null;
+    private UserData            userdata                = null;
+    private AutoScalingGroup    backendAsg              = null;
+    private IVolume             ethVolume               = null;
 
     public Eth2Stack(final Construct scope, final String id) {
         this(scope, id, null);
@@ -84,7 +86,7 @@ public class Eth2Stack extends Stack {
         initBackendAsg();
         
         // Configure a load balancer and ec2 ASG
-        // initPublicLoadBalancer();
+        initPublicLoadBalancer();
     }
 
     private void initEthVolume() {
@@ -94,7 +96,7 @@ public class Eth2Stack extends Stack {
             .size(ETH_DATA_VOLUME_SIZE)
             .encrypted(Boolean.TRUE)
             .removalPolicy(RemovalPolicy.SNAPSHOT)
-            .availabilityZone(this.vpc.getPublicSubnets().get(0).getAvailabilityZone())
+            .availabilityZone(this.vpc.getPrivateSubnets().get(0).getAvailabilityZone())
             .build();
     }
 
@@ -114,10 +116,10 @@ public class Eth2Stack extends Stack {
                 .loadBalancer(publicLb)
                 .build());            
 
-        NetworkListener testListener = publicLb.addListener("test", 
+        NetworkListener testListener = publicLb.addListener("ssh", 
             NetworkListenerProps.builder()
-                .protocol(Protocol.TCP_UDP)
-                .port(Integer.valueOf(80))
+                .protocol(Protocol.TCP)
+                .port(SSH_PORT)
                 .loadBalancer(publicLb)
                 .build());    
 
@@ -125,6 +127,7 @@ public class Eth2Stack extends Stack {
             AddNetworkTargetsProps.builder()
                 .targets(Arrays.asList(backendAsg))
                 .port(GOETH_PORT)
+                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
                 .build()
         );
 
@@ -132,6 +135,7 @@ public class Eth2Stack extends Stack {
             AddNetworkTargetsProps.builder()
                 .targets(Arrays.asList(backendAsg))
                 .port(Integer.valueOf(22))
+                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
                 .build()
         );
     }
@@ -155,10 +159,10 @@ public class Eth2Stack extends Stack {
 
         backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
             .vpc(vpc)
-            // TODO Move to private subnets
-            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PUBLIC).build())
+            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
             .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
             .machineImage(getMachineImage())
+            .keyName("eth-stack")
             .userData(userdata)
             .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
             .init(getEth2NodeCloudInit())
@@ -169,7 +173,7 @@ public class Eth2Stack extends Stack {
             .updatePolicy(UpdatePolicy.rollingUpdate())
             .signals(Signals.waitForMinCapacity(
                     SignalsOptions.builder().timeout(
-                        Duration.minutes(Integer.valueOf(1))).build()))
+                        Duration.minutes(Integer.valueOf(5))).build()))
             .build();
 
         this.userdata.addSignalOnExitCommand(backendAsg);
