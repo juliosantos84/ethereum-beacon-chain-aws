@@ -7,4 +7,4 @@ sudo systemctl stop geth
 sudo umount /var/lib/goethereum
 
 # Detach the volume
-aws ec2 detach-volume --region us-east-1 --device /dev/nvme1n1 --volume-id $(cat /home/ubuntu/eth-volume-id) --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id)
+aws ec2 detach-volume --region us-east-1 --device /dev/sdd --volume-id $(cat /home/ubuntu/eth-volume-id) --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id)
