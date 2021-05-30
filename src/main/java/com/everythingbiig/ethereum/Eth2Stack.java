@@ -177,6 +177,10 @@ public class Eth2Stack extends Stack {
         this.ethVolume.grantAttachVolumeByResourceTag(
             this.backendAsg.getGrantPrincipal(), 
             Arrays.asList(this.backendAsg));
+        
+        this.ethVolume.grantDetachVolumeByResourceTag(
+            this.backendAsg.getGrantPrincipal(), 
+            Arrays.asList(this.backendAsg));
     }
 
     private static IMachineImage getMachineImage() {
@@ -224,6 +228,7 @@ public class Eth2Stack extends Stack {
                 InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
                 InitFile.fromAsset("/etc/systemd/system/geth.service", "geth.service"),
+                InitFile.fromAsset("/home/ubuntu/unmount-volume.sh", "unmount-volume.sh"),
                 InitCommand.shellCommand("sudo systemctl daemon-reload"),
                 InitCommand.shellCommand("sudo systemctl start geth"),
                 InitCommand.shellCommand("sudo systemctl status geth")
