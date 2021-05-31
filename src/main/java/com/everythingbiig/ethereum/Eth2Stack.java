@@ -244,7 +244,11 @@ public class Eth2Stack extends Stack {
                         .mode("755")
                         .build()),
                 InitCommand.shellCommand("sudo systemctl daemon-reload"),
-                InitCommand.shellCommand("sudo systemctl start geth"),
+                // It's possible this command generates an error if the volume is not available
+                // That's OK because the service is configured to retry every 30 seconds
+                InitCommand.shellCommand("sudo systemctl start geth", 
+                    InitCommandOptions.builder()
+                        .ignoreErrors(Boolean.TRUE).build()),
                 InitCommand.shellCommand("sudo systemctl status geth")
                 );
     }
