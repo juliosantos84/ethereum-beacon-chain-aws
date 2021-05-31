@@ -128,10 +128,6 @@ public class Eth2Stack extends Stack {
                 .targets(Arrays.asList(backendAsg))
                 .port(GOETH_PORT)
                 .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .healthCheck(software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck.builder()
-                    .healthyThresholdCount(Integer.valueOf(2))
-                    .interval(Duration.seconds(10))
-                    .build())
                 .build()
         );
 
@@ -140,10 +136,6 @@ public class Eth2Stack extends Stack {
                 .targets(Arrays.asList(backendAsg))
                 .port(Integer.valueOf(22))
                 .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .healthCheck(software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck.builder()
-                    .healthyThresholdCount(Integer.valueOf(2))
-                    .interval(Duration.seconds(10))
-                    .build())
                 .build()
         );
     }
@@ -211,7 +203,6 @@ public class Eth2Stack extends Stack {
                 InitCommand.shellCommand("sudo apt update"),
                 InitCommand.shellCommand("sudo apt install awscli -y"),
                 InitCommand.shellCommand("sudo apt install geth"),
-                InitCommand.shellCommand("sudo mkdir -p /var/lib/goethereum"),
                 // Store the volume data
                 InitCommand.shellCommand("echo ${ETH_VOLUME_ID} > /home/ubuntu/eth-volume-id && echo ${ETH_VOLUME_REGION} > /home/ubuntu/eth-volume-region", 
                     InitCommandOptions.builder().env(
@@ -221,57 +212,36 @@ public class Eth2Stack extends Stack {
                                 put("ETH_VOLUME_REGION", Eth2Stack.this.getRegion());
                             }
                         }).build()),
-                // Attach the eth data volume
-                InitCommand.shellCommand("aws ec2 attach-volume --device /dev/sdd --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id) --volume-id ${ETH_VOLUME_ID} --region ${ETH_VOLUME_REGION}",
-                    InitCommandOptions.builder().env(
-                        new HashMap<String, String>(){
-                            {
-                                put("ETH_VOLUME_ID", Eth2Stack.this.ethVolume.getVolumeId());
-                                put("ETH_VOLUME_REGION", Eth2Stack.this.getRegion());
-                            }
-                        })
-                        .build()),
-                // Wait for volume to be attached
-                InitCommand.shellCommand("sleep 3"),
-                // Format the volume, if needed
-                InitCommand.shellCommand("sudo file -s /dev/nvme1n1 | grep 'ext4' || sudo mkfs -t ext4 /dev/nvme1n1"),
-                // Wait for the volume to be formatted
-                InitCommand.shellCommand("sleep 5"),
-                // Mount the volume
-                InitCommand.shellCommand("sudo mount /dev/nvme1n1 /var/lib/goethereum"),
-                InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
-                InitCommand.shellCommand("sudo chown -R goeth:goeth /var/lib/goethereum"),
+                // InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitFile.fromAsset("/etc/systemd/system/geth.service", "src/main/resources/units/geth.service"),
-                // InitFile.fromAsset("/etc/systemd/system/goeth-volume-attachment.service", "src/main/resources/units/goeth-volume-attachment.service"),
-                // InitFile.fromAsset("/etc/systemd/system/goeth-volume.mount", "src/main/resources/units/goeth-volume.mount"),
                 InitFile.fromAsset("/usr/local/bin/attach-goeth-volume.sh", "src/main/resources/bin/attach-goeth-volume.sh", 
                     InitFileAssetOptions.builder()
-                        .owner("ubuntu")
-                        .group("ubuntu")
+                        .owner("goeth")
+                        .group("goeth")
                         .mode("755")
                         .build()),
                 InitFile.fromAsset("/usr/local/bin/detach-goeth-volume.sh", "src/main/resources/bin/detach-goeth-volume.sh", 
                         InitFileAssetOptions.builder()
-                            .owner("ubuntu")
-                            .group("ubuntu")
+                            .owner("goeth")
+                            .group("goeth")
                             .mode("755")
                             .build()),
                 InitFile.fromAsset("/usr/local/bin/format-goeth-volume.sh", "src/main/resources/bin/format-goeth-volume.sh", 
                         InitFileAssetOptions.builder()
-                            .owner("ubuntu")
-                            .group("ubuntu")
+                            .owner("goeth")
+                            .group("goeth")
                             .mode("755")
                             .build()),
                 InitFile.fromAsset("/usr/local/bin/mount-goeth-volume.sh", "src/main/resources/bin/mount-goeth-volume.sh", 
                     InitFileAssetOptions.builder()
-                        .owner("ubuntu")
-                        .group("ubuntu")
+                        .owner("goeth")
+                        .group("goeth")
                         .mode("755")
                         .build()),
                 InitFile.fromAsset("/usr/local/bin/unmount-goeth-volume.sh", "src/main/resources/bin/unmount-goeth-volume.sh", 
                     InitFileAssetOptions.builder()
-                        .owner("ubuntu")
-                        .group("ubuntu")
+                        .owner("goeth")
+                        .group("goeth")
                         .mode("755")
                         .build()),
                 InitCommand.shellCommand("sudo systemctl daemon-reload"),
@@ -290,6 +260,8 @@ public class Eth2Stack extends Stack {
     public void initEth2NodeUserData() {
         this.userdata = UserData.forLinux();
         userdata.addCommands(
+            "sudo useradd --no-create-home --shell /bin/false goeth",
+            // Install cfn helper scripts
             "sudo mkdir -p /opt/aws",
             "sudo chown -R ubuntu:users /opt/aws",
             "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
