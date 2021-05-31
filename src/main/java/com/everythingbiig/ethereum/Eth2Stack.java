@@ -129,8 +129,8 @@ public class Eth2Stack extends Stack {
                 .port(GOETH_PORT)
                 .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
                 .healthCheck(software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck.builder()
-                    .healthyThresholdCount(Integer.valueOf(1))
-                    .interval(Duration.seconds(15))
+                    .healthyThresholdCount(Integer.valueOf(2))
+                    .interval(Duration.seconds(10))
                     .build())
                 .build()
         );
@@ -140,6 +140,10 @@ public class Eth2Stack extends Stack {
                 .targets(Arrays.asList(backendAsg))
                 .port(Integer.valueOf(22))
                 .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
+                .healthCheck(software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck.builder()
+                    .healthyThresholdCount(Integer.valueOf(2))
+                    .interval(Duration.seconds(10))
+                    .build())
                 .build()
         );
     }
