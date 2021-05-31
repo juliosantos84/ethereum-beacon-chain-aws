@@ -2,14 +2,20 @@
 Description=Ethereum go client volume attachment
 After=network.target 
 Wants=network.target
-Before=goeth-volume-attachment.service
+Before=geth.service
 
 [Service]
-User=ubuntu
-Group=ubuntu
+User=goeth
+Group=goeth
 Type=oneshot
-ExecStart=aws ec2 attach-volume --device /dev/sdd --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id) --volume-id $(cat /home/ubuntu/eth-volume-id) --region $(cat /home/ubuntu/eth-volume-region)
-ExecStartPost=
+
+ExecStart=/usr/local/bin/attach-goeth-volume.sh
+ExecStart=+/usr/local/bin/format-goeth-volume.sh
+ExecStart=+/usr/local/bin/mount-goeth-volume.sh
+
+ExecStop=-+/usr/local/bin/unmount-goeth-volume.sh
+ExecStop=-+/usr/local/bin/detach-goeth-volume.sh
+
 RemainAfterExit=yes
 
 [Install]
