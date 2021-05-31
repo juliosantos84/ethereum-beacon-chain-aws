@@ -160,7 +160,7 @@ public class Eth2Stack extends Stack {
         backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
             .vpc(vpc)
             .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-            .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.LARGE))
+            .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
             .machineImage(getMachineImage())
             .keyName("eth-stack")
             .userData(userdata)
@@ -212,7 +212,6 @@ public class Eth2Stack extends Stack {
                                 put("ETH_VOLUME_REGION", Eth2Stack.this.getRegion());
                             }
                         }).build()),
-                // InitCommand.shellCommand("sudo useradd --no-create-home --shell /bin/false goeth"),
                 InitFile.fromAsset("/etc/systemd/system/geth.service", "src/main/resources/units/geth.service"),
                 InitFile.fromAsset("/usr/local/bin/attach-goeth-volume.sh", "src/main/resources/bin/attach-goeth-volume.sh", 
                     InitFileAssetOptions.builder()
