@@ -1,0 +1,23 @@
+[Unit]
+Description=Ethereum go client
+After=network.target 
+Wants=network.target
+
+[Service]
+User=goeth 
+Group=goeth
+Type=simple
+Restart=always
+RestartSec=30
+
+#ExecStartPre=/usr/local/bin/attach-goeth-volume.sh
+#ExecStartPre=+/usr/local/bin/format-goeth-volume.sh
+#ExecStartPre=+/usr/local/bin/mount-goeth-volume.sh
+
+ExecStart=geth --goerli --http --datadir /var/lib/goethereum
+
+#ExecStopPost=-+/usr/local/bin/unmount-goeth-volume.sh
+#ExecStopPost=-+/usr/local/bin/detach-goeth-volume.sh
+
+[Install]
+WantedBy=default.target

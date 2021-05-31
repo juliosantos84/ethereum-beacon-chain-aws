@@ -1,0 +1,14 @@
+[Unit]
+Description=Mount for Ethereum go client
+Before=geth.service
+After=network.target
+Wants=network.target
+Requires=goeth-volume-attachment.service
+
+[Mount]
+What=/dev/nvme1n1
+Where=/var/lib/goethereum
+LazyUnmount=yes
+
+[Install]
+WantedBy=multi-user.target
