@@ -11,6 +11,7 @@ import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.autoscaling.ApplyCloudFormationInitOptions;
 import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
+import software.amazon.awscdk.services.autoscaling.RollingUpdateOptions;
 import software.amazon.awscdk.services.autoscaling.Signals;
 import software.amazon.awscdk.services.autoscaling.SignalsOptions;
 import software.amazon.awscdk.services.autoscaling.UpdatePolicy;
@@ -58,12 +59,12 @@ public class EthBeaconChainStack extends Stack {
     static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(2000));
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
-    private Vpc                 vpc                     = null;
-    private NetworkLoadBalancer publicLb                = null;
-    private SecurityGroup       backendAsgSecurityGroup = null;
-    private UserData            userdata                = null;
-    private AutoScalingGroup    backendAsg              = null;
-    private IVolume             ethVolume               = null;
+    private Vpc                 vpc                             = null;
+    private NetworkLoadBalancer publicLb                        = null;
+    private SecurityGroup       backendAsgSecurityGroup         = null;
+    private UserData            userdata                        = null;
+    private AutoScalingGroup    ethBackendAutoScalingGroup      = null;
+    private IVolume             ethChainDataVolume              = null;
 
     public EthBeaconChainStack(final Construct scope, final String id) {
         this(scope, id, null);
@@ -80,112 +81,124 @@ public class EthBeaconChainStack extends Stack {
             .build();
         
         // Configure a persistent volume for chain data
-        initEthVolume();
+        this.ethChainDataVolume = getEthChainDataVolume();
 
         // Autoscaling group for ETH backend
-        initBackendAsg();
+        this.ethBackendAutoScalingGroup = getEthBackendAutoScalingGroup();
         
         // Configure a load balancer and ec2 ASG
-        initPublicLoadBalancer();
+        this.publicLb = getPublicLoadBalancer();
     }
 
-    private void initEthVolume() {
-        this.ethVolume = Volume.Builder.create(this, "ethVolume")
-            .volumeName("ethVolume")
-            .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
-            .size(ETH_DATA_VOLUME_SIZE)
-            .encrypted(Boolean.TRUE)
-            .removalPolicy(RemovalPolicy.SNAPSHOT)
-            .availabilityZone(this.vpc.getPrivateSubnets().get(0).getAvailabilityZone())
-            .build();
+    protected IVolume getEthChainDataVolume() {
+        if (this.ethChainDataVolume == null) {
+            this.ethChainDataVolume = Volume.Builder.create(this, "ethVolume")
+                .volumeName("ethVolume")
+                .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
+                .size(ETH_DATA_VOLUME_SIZE)
+                .encrypted(Boolean.TRUE)
+                .removalPolicy(RemovalPolicy.SNAPSHOT)
+                .availabilityZone(this.vpc.getPrivateSubnets().get(0).getAvailabilityZone())
+                .build();
+        }
+        return this.ethChainDataVolume;
+         
     }
 
-    private void initPublicLoadBalancer() {
-        this.publicLb = NetworkLoadBalancer.Builder.create(this, "publicLb")
-            .vpc(vpc)
-            .vpcSubnets(SubnetSelection.builder()
-                .subnetType(SubnetType.PUBLIC).build())
-            .internetFacing(Boolean.TRUE)
-            .crossZoneEnabled(Boolean.TRUE)
-            .build();
-        
-        NetworkListener goEthListener = publicLb.addListener("goEth", 
-            NetworkListenerProps.builder()
-                .protocol(Protocol.TCP_UDP)
-                .port(GOETH_PORT)
-                .loadBalancer(publicLb)
-                .build());            
+    protected NetworkLoadBalancer getPublicLoadBalancer() {
+        if (this.publicLb == null) {
+            this.publicLb = NetworkLoadBalancer.Builder.create(this, "publicLb")
+                .vpc(vpc)
+                .vpcSubnets(SubnetSelection.builder()
+                    .subnetType(SubnetType.PUBLIC).build())
+                .internetFacing(Boolean.TRUE)
+                .crossZoneEnabled(Boolean.TRUE)
+                .build();
+            
+            NetworkListener goEthListener = this.publicLb.addListener("goEth", 
+                NetworkListenerProps.builder()
+                    .protocol(Protocol.TCP_UDP)
+                    .port(GOETH_PORT)
+                    .loadBalancer(this.publicLb)
+                    .build());            
 
-        NetworkListener testListener = publicLb.addListener("ssh", 
-            NetworkListenerProps.builder()
-                .protocol(Protocol.TCP)
-                .port(SSH_PORT)
-                .loadBalancer(publicLb)
-                .build());    
+            NetworkListener testListener = this.publicLb.addListener("ssh", 
+                NetworkListenerProps.builder()
+                    .protocol(Protocol.TCP)
+                    .port(SSH_PORT)
+                    .loadBalancer(this.publicLb)
+                    .build());    
 
-        NetworkTargetGroup goEthTargetGroup = goEthListener.addTargets("ethBackendTargets", 
-            AddNetworkTargetsProps.builder()
-                .targets(Arrays.asList(backendAsg))
-                .port(GOETH_PORT)
-                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .build()
-        );
+            NetworkTargetGroup goEthTargetGroup = goEthListener.addTargets("ethBackendTargets", 
+                AddNetworkTargetsProps.builder()
+                    .targets(Arrays.asList(this.getEthBackendAutoScalingGroup()))
+                    .port(GOETH_PORT)
+                    .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
+                    .build()
+            );
 
-        NetworkTargetGroup testTargetGroup = testListener.addTargets("testTargets", 
-            AddNetworkTargetsProps.builder()
-                .targets(Arrays.asList(backendAsg))
-                .port(Integer.valueOf(22))
-                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .build()
-        );
+            NetworkTargetGroup testTargetGroup = testListener.addTargets("testTargets", 
+                AddNetworkTargetsProps.builder()
+                    .targets(Arrays.asList(this.getEthBackendAutoScalingGroup()))
+                    .port(Integer.valueOf(22))
+                    .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
+                    .build()
+            );
+        }
+        return this.publicLb;
     }
 
-    private void initBackendAsgSecurityGroup() {
-        this.backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
-            .vpc(vpc)
-            .build();
+    protected SecurityGroup getEthBackendAsgSecurityGroup() {
+        if (this.backendAsgSecurityGroup == null) {
+            this.backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
+                .vpc(this.vpc)
+                .build();
 
-        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(GOETH_PORT));
-        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.udp(GOETH_PORT));
-        backendAsgSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22)); // TEST
-        backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(22)); // TEST
+            backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.udp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22)); // TEST
+            backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(22)); // TEST
+        }
+        return this.backendAsgSecurityGroup;
     }
 
-    private void initBackendAsg() {
-        
-        initEth2NodeUserData();
+    protected AutoScalingGroup getEthBackendAutoScalingGroup() {
+        if (this.ethBackendAutoScalingGroup == null) {
+            this.ethBackendAutoScalingGroup = AutoScalingGroup.Builder.create(this, "backendAsg")
+                .vpc(vpc)
+                .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
+                .machineImage(getMachineImage())
+                .keyName("eth-stack")
+                .userData(getEthUserData())
+                .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
+                .init(getEth2NodeCloudInit())
+                .minCapacity(MIN_GETH_INSTANCES)
+                .maxCapacity(MAX_GETH_INSTANCES)
+                .allowAllOutbound(Boolean.TRUE)
+                .securityGroup(this.getEthBackendAsgSecurityGroup())
+                .updatePolicy(UpdatePolicy.rollingUpdate(
+                    RollingUpdateOptions.builder()
+                        .minInstancesInService(MIN_GETH_INSTANCES)
+                        .build()))
+                .signals(Signals.waitForMinCapacity(
+                        SignalsOptions.builder().timeout(
+                            Duration.minutes(Integer.valueOf(5))).build()))
+                .build();
+        }
 
-        initBackendAsgSecurityGroup();
-
-        backendAsg = AutoScalingGroup.Builder.create(this, "backendAsg")
-            .vpc(vpc)
-            .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-            .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
-            .machineImage(getMachineImage())
-            .keyName("eth-stack")
-            .userData(userdata)
-            .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
-            .init(getEth2NodeCloudInit())
-            .minCapacity(MIN_GETH_INSTANCES)
-            .maxCapacity(MAX_GETH_INSTANCES)
-            .allowAllOutbound(Boolean.TRUE)
-            .securityGroup(backendAsgSecurityGroup)
-            .updatePolicy(UpdatePolicy.rollingUpdate())
-            .signals(Signals.waitForMinCapacity(
-                    SignalsOptions.builder().timeout(
-                        Duration.minutes(Integer.valueOf(5))).build()))
-            .build();
-
-        this.userdata.addSignalOnExitCommand(backendAsg);
+        this.getEthUserData().addSignalOnExitCommand(ethBackendAutoScalingGroup);
 
         // Grant the backendAsg access to attacht he volume
-        this.ethVolume.grantAttachVolumeByResourceTag(
-            this.backendAsg.getGrantPrincipal(), 
-            Arrays.asList(this.backendAsg));
+        this.getEthChainDataVolume().grantAttachVolumeByResourceTag(
+            this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
+            Arrays.asList(this.ethBackendAutoScalingGroup));
         
-        this.ethVolume.grantDetachVolumeByResourceTag(
-            this.backendAsg.getGrantPrincipal(), 
-            Arrays.asList(this.backendAsg));
+        this.getEthChainDataVolume().grantDetachVolumeByResourceTag(
+            this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
+            Arrays.asList(this.ethBackendAutoScalingGroup));
+
+        return this.ethBackendAutoScalingGroup;
     }
 
     private static IMachineImage getMachineImage() {
@@ -197,7 +210,7 @@ public class EthBeaconChainStack extends Stack {
             }});
     }
 
-    private CloudFormationInit getEth2NodeCloudInit() {
+    protected CloudFormationInit getEth2NodeCloudInit() {
         return CloudFormationInit.fromElements(
                 InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
                 InitCommand.shellCommand("sudo apt update"),
@@ -208,7 +221,7 @@ public class EthBeaconChainStack extends Stack {
                     InitCommandOptions.builder().env(
                         new HashMap<String, String>(){
                             {
-                                put("ETH_VOLUME_ID", EthBeaconChainStack.this.ethVolume.getVolumeId());
+                                put("ETH_VOLUME_ID", EthBeaconChainStack.this.getEthChainDataVolume().getVolumeId());
                                 put("ETH_VOLUME_REGION", EthBeaconChainStack.this.getRegion());
                             }
                         }).build()),
@@ -260,19 +273,22 @@ public class EthBeaconChainStack extends Stack {
             .build();
     }
 
-    public void initEth2NodeUserData() {
-        this.userdata = UserData.forLinux();
-        userdata.addCommands(
-            "sudo useradd --no-create-home --shell /bin/false goeth",
-            // Install cfn helper scripts
-            "sudo mkdir -p /opt/aws",
-            "sudo chown -R ubuntu:users /opt/aws",
-            "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
-            "tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/",
-            "mv /tmp/aws-cfn-bootstrap-2.0/* /opt/aws",
-            "cd /opt/aws",
-            "sudo python3 setup.py install --prefix /opt/aws --install-lib /usr/lib/python3.8",
-            "chmod +x /opt/aws/bin/*",
-            "sudo ln -s /opt/aws/bin/cfn-hup /etc/init.d/cfn-hup");
+    public UserData getEthUserData() {
+        if (this.userdata == null) {
+            this.userdata = UserData.forLinux();
+            userdata.addCommands(
+                "sudo useradd --no-create-home --shell /bin/false goeth",
+                // Install cfn helper scripts
+                "sudo mkdir -p /opt/aws",
+                "sudo chown -R ubuntu:users /opt/aws",
+                "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
+                "tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/",
+                "mv /tmp/aws-cfn-bootstrap-2.0/* /opt/aws",
+                "cd /opt/aws",
+                "sudo python3 setup.py install --prefix /opt/aws --install-lib /usr/lib/python3.8",
+                "chmod +x /opt/aws/bin/*",
+                "sudo ln -s /opt/aws/bin/cfn-hup /etc/init.d/cfn-hup");
+        }
+        return this.userdata;
     }
 }
