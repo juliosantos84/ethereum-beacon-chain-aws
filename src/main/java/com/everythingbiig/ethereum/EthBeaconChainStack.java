@@ -43,7 +43,7 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 
 
 
-public class Eth2Stack extends Stack {
+public class EthBeaconChainStack extends Stack {
 
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
@@ -65,11 +65,11 @@ public class Eth2Stack extends Stack {
     private AutoScalingGroup    backendAsg              = null;
     private IVolume             ethVolume               = null;
 
-    public Eth2Stack(final Construct scope, final String id) {
+    public EthBeaconChainStack(final Construct scope, final String id) {
         this(scope, id, null);
     }
 
-    public Eth2Stack(final Construct scope, final String id, final StackProps props) {
+    public EthBeaconChainStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
         // Configure a VPC
@@ -208,8 +208,8 @@ public class Eth2Stack extends Stack {
                     InitCommandOptions.builder().env(
                         new HashMap<String, String>(){
                             {
-                                put("ETH_VOLUME_ID", Eth2Stack.this.ethVolume.getVolumeId());
-                                put("ETH_VOLUME_REGION", Eth2Stack.this.getRegion());
+                                put("ETH_VOLUME_ID", EthBeaconChainStack.this.ethVolume.getVolumeId());
+                                put("ETH_VOLUME_REGION", EthBeaconChainStack.this.getRegion());
                             }
                         }).build()),
                 InitFile.fromAsset("/etc/systemd/system/geth.service", "src/main/resources/units/geth.service"),

@@ -3,11 +3,11 @@ package com.everythingbiig.ethereum;
 import software.amazon.awscdk.core.App;
 import software.amazon.awscdk.core.StackProps;
 
-public class Eth2App {
+public class EthBeaconChainApp {
     public static void main(final String[] args) {
         App app = new App();
 
-        new Eth2Stack(app, "Eth2Stack", StackProps.builder()
+        new EthBeaconChainStack(app, "Eth2Stack", StackProps.builder()
                 // If you don't specify 'env', this stack will be environment-agnostic.
                 // Account/Region-dependent features and context lookups will not work,
                 // but a single synthesized template can be deployed anywhere.

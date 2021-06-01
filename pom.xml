@@ -30,7 +30,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
-                    <mainClass>com.everythingbiig.ethereum.Eth2App</mainClass>
+                    <mainClass>com.everythingbiig.ethereum.EthBeaconChainApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>
