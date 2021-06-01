@@ -34,3 +34,4 @@ target
 .cdk.staging
 cdk.out
 
+packer_cache
