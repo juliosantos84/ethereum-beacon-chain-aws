@@ -26,8 +26,9 @@ source "amazon-ebs" "lighthouse" {
   region               = var.region
   source_ami           = "${lookup(var.source_amis, var.region, "")}"
   ssh_username         = "ubuntu"
-  ssh_interface        = "session_manager"
+  ssh_interface        = "public_dns"
   communicator         = "ssh"
+  associate_public_ip_address = true
   # iam_instance_profile = "myinstanceprofile"
   temporary_iam_instance_profile_policy_document {
       Statement {
