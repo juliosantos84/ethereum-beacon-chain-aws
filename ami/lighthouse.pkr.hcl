@@ -51,7 +51,7 @@ build {
     # inline = ["echo Connected via SSM at '${build.User}@${build.Host}:${build.Port}'"]
     scripts = [
       "ami/scripts/provisioner/install-cfn-helper.sh",
-      "ami/scripts/provisioner/build-lighthouse.sh"
+      "ami/scripts/provisioner/install-lighthouse.sh"
     ]
   }
 }
