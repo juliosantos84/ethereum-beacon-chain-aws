@@ -21,7 +21,7 @@ variable "region" {
 }
 
 locals {
-  target_ami_name = "lighthouse-${formatdate("YYYYDDMMhhmmss", timestamp())}"
+  target_ami_name = "lighthouse-${formatdate("YYYYMMDDhhmmss", timestamp())}"
 }
 
 source "amazon-ebs" "lighthouse" {
@@ -33,7 +33,6 @@ source "amazon-ebs" "lighthouse" {
   ssh_interface        = "public_dns"
   communicator         = "ssh"
   associate_public_ip_address = true
-  # iam_instance_profile = "myinstanceprofile"
   temporary_iam_instance_profile_policy_document {
       Statement {
           Action   = ["logs:*"]
@@ -48,10 +47,10 @@ build {
   sources = ["source.amazon-ebs.lighthouse"]
 
   provisioner "shell" {
-    # inline = ["echo Connected via SSM at '${build.User}@${build.Host}:${build.Port}'"]
     scripts = [
       "ami/scripts/provisioner/install-cfn-helper.sh",
-      "ami/scripts/provisioner/install-lighthouse.sh"
+      "ami/scripts/provisioner/lighthouse/create-users.sh",
+      "ami/scripts/provisioner/lighthouse/install-binaries.sh"
     ]
   }
 }
