@@ -20,8 +20,12 @@ variable "region" {
   default = "us-east-1"
 }
 
+locals {
+  target_ami_name = "lighthouse-${formatdate("YYYYDDMMhhmmss", timestamp())}"
+}
+
 source "amazon-ebs" "lighthouse" {
-  ami_name             = "lighthouse {{timestamp}}"
+  ami_name             = "${local.target_ami_name}"
   instance_type        = "t3a.small"
   region               = var.region
   source_ami           = "${lookup(var.source_amis, var.region, "")}"
@@ -44,6 +48,7 @@ build {
   sources = ["source.amazon-ebs.lighthouse"]
 
   provisioner "shell" {
-    inline = ["echo Connected via SSM at '${build.User}@${build.Host}:${build.Port}'"]
+    # inline = ["echo Connected via SSM at '${build.User}@${build.Host}:${build.Port}'"]
+    scripts = ["ami/scripts/provisioner/install-cfn-helper.sh"]
   }
 }
