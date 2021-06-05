@@ -41,13 +41,15 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerPro
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkTargetGroup;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 
 
 
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("goeth-20210605175740").build());
+        LookupMachineImageProps.builder().name("goeth-20210605205208").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -186,6 +188,12 @@ public class Goeth extends Stack {
                         SignalsOptions.builder().timeout(
                             Duration.minutes(Integer.valueOf(5))).build()))
                 .build();
+            this.ethBackendAutoScalingGroup.getGrantPrincipal()
+                .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                    .actions(Arrays.asList("ec2:DescribeVolumes"))
+                    .effect(Effect.ALLOW)
+                    .resources(Arrays.asList("*"))
+                    .build());
         }
 
         // Grant the backendAsg access to attacht he volume
@@ -203,7 +211,7 @@ public class Goeth extends Stack {
 
     protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
-            InitCommand.shellCommand("sudo apt install awscli -y"),
+            InitCommand.shellCommand("sudo apt install awscli jq -y"),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
             // It's possible this command generates an error if the volume is not available
             // That's OK because the service is configured to retry every 30 seconds
