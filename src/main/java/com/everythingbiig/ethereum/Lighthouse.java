@@ -11,6 +11,7 @@ import software.amazon.awscdk.services.autoscaling.Signals;
 import software.amazon.awscdk.services.autoscaling.SignalsOptions;
 import software.amazon.awscdk.services.autoscaling.UpdatePolicy;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
+import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
@@ -23,7 +24,9 @@ import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
 
 public class Lighthouse extends Stack {
-    public static final String LIGHTHOUSE_AMI = "lighthouse-20210604201103";
+    public static final IMachineImage LIGHTHOUSE_AMI = MachineImage.lookup(
+        LookupMachineImageProps.builder()
+            .name("lighthouse-20210605180126").build());
     private Vpc vpc = null;
     private AutoScalingGroup lighthouseAsg = null;
     private SecurityGroup lighthouseSecurityGroup = null;
@@ -45,9 +48,7 @@ public class Lighthouse extends Stack {
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
-                .machineImage(MachineImage.lookup(
-                    LookupMachineImageProps.builder()
-                        .name(LIGHTHOUSE_AMI).build()))
+                .machineImage(LIGHTHOUSE_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
                 .init(this.getLighthouseCloudInit())

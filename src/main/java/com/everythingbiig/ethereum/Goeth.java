@@ -46,7 +46,7 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("geth-20210605153622").build());
+        LookupMachineImageProps.builder().name("goeth-20210605175740").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
