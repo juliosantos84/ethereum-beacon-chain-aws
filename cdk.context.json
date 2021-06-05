@@ -10,5 +10,6 @@
   "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210604201103:filters.state.0=available:region=us-east-1": "ami-0593f6cf8bbde8b47",
   "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=geth-20210605153622:filters.state.0=available:region=us-east-1": "ami-07c07424351837bd5",
   "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=goeth-20210605175740:filters.state.0=available:region=us-east-1": "ami-0bb05ed8e4797d3ec",
-  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210605180126:filters.state.0=available:region=us-east-1": "ami-0a25651a8cee66e78"
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210605180126:filters.state.0=available:region=us-east-1": "ami-0a25651a8cee66e78",
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=goeth-20210605205208:filters.state.0=available:region=us-east-1": "ami-0776d8e340d0dbc49"
 }
