@@ -3,6 +3,7 @@ package com.everythingbiig.ethereum;
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.core.Stack;
+import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.autoscaling.ApplyCloudFormationInitOptions;
 import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
 import software.amazon.awscdk.services.autoscaling.RollingUpdateOptions;
@@ -28,7 +29,11 @@ public class Lighthouse extends Stack {
     private SecurityGroup lighthouseSecurityGroup = null;
     
     public Lighthouse(final Construct scope, final String id, Vpc targetVpc) {
-        super(scope, id);
+        this(scope, id, null, targetVpc);
+    }
+
+    public Lighthouse(final Construct scope, final String id, StackProps props, Vpc targetVpc) {
+        super(scope, id, props);
         this.vpc = targetVpc;
         
         getLighthouseAsg();

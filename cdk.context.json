@@ -1,0 +1,11 @@
+{
+  "availability-zones:account=297473205123:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210604201103:filters.state.0=available:region=us-east-1": "ami-0593f6cf8bbde8b47"
+}
