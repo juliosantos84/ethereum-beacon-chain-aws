@@ -1,8 +1,5 @@
 #! /bin/bash
 
-# Install the cli
-sudo apt-get update && sudo apt-get install awscli -y
-
 # DO THIS LAST bc of the cd ${AWS_ROOT}
 # Install cfn helper scripts
 AWS_ROOT=/opt/aws
