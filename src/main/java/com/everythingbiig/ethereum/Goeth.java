@@ -1,7 +1,8 @@
 package com.everythingbiig.ethereum;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.List;
 
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
@@ -9,6 +10,7 @@ import software.amazon.awscdk.core.RemovalPolicy;
 import software.amazon.awscdk.core.Size;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
+import software.amazon.awscdk.core.Tags;
 import software.amazon.awscdk.services.autoscaling.ApplyCloudFormationInitOptions;
 import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
 import software.amazon.awscdk.services.autoscaling.RollingUpdateOptions;
@@ -31,7 +33,6 @@ import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
-import software.amazon.awscdk.services.ec2.UserData;
 import software.amazon.awscdk.services.ec2.Volume;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
@@ -57,15 +58,14 @@ public class Goeth extends Stack {
     static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(1);
 
     static final IPeer      VPC_CIDR_PEER               = Peer.ipv4(VPC_CIDR);
-    static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(2000));
+    static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(1000));
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
     private Vpc                 vpc                             = null;
     private NetworkLoadBalancer publicLb                        = null;
     private SecurityGroup       backendAsgSecurityGroup         = null;
-    private UserData            userdata                        = null;
     private AutoScalingGroup    ethBackendAutoScalingGroup      = null;
-    private IVolume             ethChainDataVolume              = null;
+    private List<IVolume>       chaindataVolumes        = null;
 
     public Goeth(final Construct scope, final String id, Vpc targetVpc) {
         this(scope, id, null, targetVpc);
@@ -78,7 +78,7 @@ public class Goeth extends Stack {
         this.vpc = targetVpc;
         
         // Configure a persistent volume for chain data
-        getEthChainDataVolume();
+        getChaindataVolumes();
 
         // Autoscaling group for ETH backend
         getEthBackendAutoScalingGroup();
@@ -87,18 +87,23 @@ public class Goeth extends Stack {
         getPublicLoadBalancer();
     }
 
-    protected IVolume getEthChainDataVolume() {
-        if (this.ethChainDataVolume == null) {
-            this.ethChainDataVolume = Volume.Builder.create(this, "ethVolume")
-                .volumeName("ethVolume")
+    protected List<IVolume> getChaindataVolumes() {
+        if (this.chaindataVolumes == null) {
+            this.chaindataVolumes = new ArrayList<IVolume>();
+            for(String az : this.vpc.getAvailabilityZones()) {
+                IVolume vol = Volume.Builder.create(this, "chaindataVolume"+az)
+                .volumeName("chaindataVolume-"+az)
                 .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
                 .size(ETH_DATA_VOLUME_SIZE)
                 .encrypted(Boolean.TRUE)
-                .removalPolicy(RemovalPolicy.SNAPSHOT)
-                .availabilityZone(this.vpc.getPrivateSubnets().get(0).getAvailabilityZone())
+                .removalPolicy(RemovalPolicy.DESTROY)
+                .availabilityZone(az)
                 .build();
+                Tags.of(vol).add("Name", "chaindata");
+                this.chaindataVolumes.add(vol);
+            }
         }
-        return this.ethChainDataVolume;
+        return this.chaindataVolumes;
          
     }
 
@@ -112,21 +117,21 @@ public class Goeth extends Stack {
                 .crossZoneEnabled(Boolean.TRUE)
                 .build();
             
-            NetworkListener goEthListener = this.publicLb.addListener("goEth", 
+            NetworkListener goEthListener = this.publicLb.addListener("goeth", 
                 NetworkListenerProps.builder()
                     .protocol(Protocol.TCP_UDP)
                     .port(GOETH_PORT)
                     .loadBalancer(this.publicLb)
                     .build());            
 
-            NetworkListener testListener = this.publicLb.addListener("ssh", 
+            NetworkListener sshListener = this.publicLb.addListener("ssh", 
                 NetworkListenerProps.builder()
                     .protocol(Protocol.TCP)
                     .port(SSH_PORT)
                     .loadBalancer(this.publicLb)
                     .build());    
 
-            NetworkTargetGroup goEthTargetGroup = goEthListener.addTargets("ethBackendTargets", 
+            NetworkTargetGroup goEthTargetGroup = goEthListener.addTargets("goeth", 
                 AddNetworkTargetsProps.builder()
                     .targets(Arrays.asList(this.getEthBackendAutoScalingGroup()))
                     .port(GOETH_PORT)
@@ -134,7 +139,7 @@ public class Goeth extends Stack {
                     .build()
             );
 
-            NetworkTargetGroup testTargetGroup = testListener.addTargets("testTargets", 
+            NetworkTargetGroup sshTargetGroup = sshListener.addTargets("ssh", 
                 AddNetworkTargetsProps.builder()
                     .targets(Arrays.asList(this.getEthBackendAutoScalingGroup()))
                     .port(Integer.valueOf(22))
@@ -161,14 +166,14 @@ public class Goeth extends Stack {
 
     protected AutoScalingGroup getEthBackendAutoScalingGroup() {
         if (this.ethBackendAutoScalingGroup == null) {
-            this.ethBackendAutoScalingGroup = AutoScalingGroup.Builder.create(this, "backendAsg")
+            this.ethBackendAutoScalingGroup = AutoScalingGroup.Builder.create(this, "goeth")
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
                 .machineImage(GOETH_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
-                .init(getEth2NodeCloudInit())
+                .init(getGoethNodeCloudInit())
                 .minCapacity(MIN_GETH_INSTANCES)
                 .maxCapacity(MAX_GETH_INSTANCES)
                 .allowAllOutbound(Boolean.TRUE)
@@ -184,28 +189,21 @@ public class Goeth extends Stack {
         }
 
         // Grant the backendAsg access to attacht he volume
-        this.getEthChainDataVolume().grantAttachVolumeByResourceTag(
-            this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
-            Arrays.asList(this.ethBackendAutoScalingGroup));
-        
-        this.getEthChainDataVolume().grantDetachVolumeByResourceTag(
-            this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
-            Arrays.asList(this.ethBackendAutoScalingGroup));
+        for(IVolume vol : this.getChaindataVolumes()) {
+            vol.grantAttachVolumeByResourceTag(
+                this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
+                Arrays.asList(this.ethBackendAutoScalingGroup));
+            vol.grantDetachVolumeByResourceTag(
+                this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
+                Arrays.asList(this.ethBackendAutoScalingGroup));
+        }
 
         return this.ethBackendAutoScalingGroup;
     }
 
-    protected CloudFormationInit getEth2NodeCloudInit() {
+    protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
-            // Store the volume data
-            InitCommand.shellCommand("echo ${ETH_VOLUME_ID} > /home/ubuntu/eth-volume-id && echo ${ETH_VOLUME_REGION} > /home/ubuntu/eth-volume-region", 
-                InitCommandOptions.builder().env(
-                    new HashMap<String, String>(){
-                        {
-                            put("ETH_VOLUME_ID", Goeth.this.getEthChainDataVolume().getVolumeId());
-                            put("ETH_VOLUME_REGION", Goeth.this.getRegion());
-                        }
-                    }).build()),
+            InitCommand.shellCommand("sudo apt install awscli -y"),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
             // It's possible this command generates an error if the volume is not available
             // That's OK because the service is configured to retry every 30 seconds
