@@ -7,30 +7,26 @@ packer {
   }
 }
 
-variable "source_amis" {
-  type = map(string)
-  default = {
-    "us-east-1": "ami-0db6c6238a40c0681",
-    "us-east-2": "ami-03b6c8bd55e00d5ed"
-  }
-}
 
 variable "region" {
   type = string
   default = "us-east-1"
 }
 
+variable "skip_create_ami" {
+  type = bool
+  default = false
+}
+
 locals {
   target_ami_name = "lighthouse-${formatdate("YYYYMMDDhhmmss", timestamp())}"
-  skip_create_ami = false
 }
 
 source "amazon-ebs" "lighthouse" {
   ami_name             = "${local.target_ami_name}"
-  skip_create_ami      = "${local.skip_create_ami}"
+  skip_create_ami      = "${var.skip_create_ami}"
   instance_type        = "t3a.small"
   region               = var.region
-  source_ami           = "${lookup(var.source_amis, var.region, "")}"
   ssh_username         = "ubuntu"
   ssh_interface        = "public_dns"
   communicator         = "ssh"
@@ -42,6 +38,15 @@ source "amazon-ebs" "lighthouse" {
           Resource = ["*"]
       }
       Version = "2012-10-17"
+  }
+  source_ami_filter {
+    filters = {
+       virtualization-type = "hvm"
+       name = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
+       root-device-type = "ebs"
+    }
+    owners = ["099720109477"]
+    most_recent = true
   }
 }
 
