@@ -48,7 +48,7 @@ build {
 
   provisioner "shell" {
     scripts = [
-      "ami/scripts/provisioner/install-cfn-helper.sh",
+      "ami/scripts/provisioner/install-aws-base.sh",
       "ami/scripts/provisioner/lighthouse/create-users.sh",
       "ami/scripts/provisioner/lighthouse/install-binaries.sh"
     ]

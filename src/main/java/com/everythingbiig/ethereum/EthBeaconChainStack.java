@@ -87,7 +87,7 @@ public class EthBeaconChainStack extends Stack {
         this.ethBackendAutoScalingGroup = getEthBackendAutoScalingGroup();
         
         // Configure a load balancer and ec2 ASG
-        this.publicLb = getPublicLoadBalancer();
+        // this.publicLb = getPublicLoadBalancer();
     }
 
     protected IVolume getEthChainDataVolume() {
