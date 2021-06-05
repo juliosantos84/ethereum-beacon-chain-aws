@@ -84,7 +84,7 @@ public class Goeth extends Stack {
         getEthBackendAutoScalingGroup();
         
         // Configure a load balancer and ec2 ASG
-        // this.publicLb = getPublicLoadBalancer();
+        getPublicLoadBalancer();
     }
 
     protected IVolume getEthChainDataVolume() {
