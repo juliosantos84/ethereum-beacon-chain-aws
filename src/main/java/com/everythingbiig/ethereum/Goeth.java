@@ -211,9 +211,7 @@ public class Goeth extends Stack {
             // That's OK because the service is configured to retry every 30 seconds
             InitCommand.shellCommand("sudo systemctl start geth", 
                 InitCommandOptions.builder()
-                    .ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl status geth")
-        );
+                    .ignoreErrors(Boolean.TRUE).build()));
     }
 
     public static NetworkListenerProps getNetworkListenerProps(Protocol protocol, Integer port) {
@@ -221,24 +219,5 @@ public class Goeth extends Stack {
             .protocol(protocol)
             .port(port)
             .build();
-    }
-
-    public UserData getEthUserData() {
-        if (this.userdata == null) {
-            this.userdata = UserData.forLinux();
-            userdata.addCommands(
-                "sudo useradd --no-create-home --shell /bin/false goeth",
-                // Install cfn helper scripts
-                "sudo mkdir -p /opt/aws",
-                "sudo chown -R ubuntu:users /opt/aws",
-                "curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz --output /tmp/aws-cfn-bootstrap-py3-latest.tar.gz",
-                "tar -xvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp/",
-                "mv /tmp/aws-cfn-bootstrap-2.0/* /opt/aws",
-                "cd /opt/aws",
-                "sudo python3 setup.py install --prefix /opt/aws --install-lib /usr/lib/python3.8",
-                "chmod +x /opt/aws/bin/*",
-                "sudo ln -s /opt/aws/bin/cfn-hup /etc/init.d/cfn-hup");
-        }
-        return this.userdata;
     }
 }
