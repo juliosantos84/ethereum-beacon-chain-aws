@@ -8,8 +8,9 @@ import software.amazon.awscdk.core.StackProps;
 
 public class EthereumBeaconChainService extends Construct {
 
-    private Networking networking = null;
-    private Lighthouse lighthouse = null;
+    private Networking      networking = null;
+    private Goeth           goeth = null;
+    private Lighthouse      lighthouse = null;
 
     public EthereumBeaconChainService(software.constructs.@NotNull Construct scope, @NotNull String id) {
         super(scope, id);
@@ -20,7 +21,14 @@ public class EthereumBeaconChainService extends Construct {
                     .region(System.getenv("CDK_DEFAULT_REGION"))
                     .build())
             .build());
-            
+
+        this.goeth = new Goeth(this, "goeth", StackProps.builder()
+            .env(Environment.builder()
+                .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
+                .region(System.getenv("CDK_DEFAULT_REGION"))
+                .build())
+            .build(), this.networking.getAppVpc());
+
         this.lighthouse = new  Lighthouse(this, "lighthouse", StackProps.builder()
             .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))

@@ -19,7 +19,7 @@ public class Eth2Test {
     @Test
     public void testStack() throws IOException {
         App app = new App();
-        EthBeaconChainStack stack = new EthBeaconChainStack(app, "test");
+        Goeth stack = new Goeth(app, "test", null);
 
         // synthesize the stack to a CloudFormation template
         JsonNode actual = JSON.valueToTree(app.synth().getStackArtifact(stack.getArtifactId()).getTemplate());

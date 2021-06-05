@@ -7,5 +7,6 @@
     "us-east-1e",
     "us-east-1f"
   ],
-  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210604201103:filters.state.0=available:region=us-east-1": "ami-0593f6cf8bbde8b47"
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210604201103:filters.state.0=available:region=us-east-1": "ami-0593f6cf8bbde8b47",
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=geth-20210605153622:filters.state.0=available:region=us-east-1": "ami-07c07424351837bd5"
 }

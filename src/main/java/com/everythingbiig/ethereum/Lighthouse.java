@@ -44,7 +44,7 @@ public class Lighthouse extends Stack {
             this.lighthouseAsg = AutoScalingGroup.Builder.create(this, "lighthouseAsg")
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
                 .machineImage(MachineImage.lookup(
                     LookupMachineImageProps.builder()
                         .name(LIGHTHOUSE_AMI).build()))

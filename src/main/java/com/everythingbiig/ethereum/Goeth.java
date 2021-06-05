@@ -24,6 +24,7 @@ import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.ec2.LookupMachineImageProps;
 import software.amazon.awscdk.services.ec2.MachineImage;
 import software.amazon.awscdk.services.ec2.Peer;
 import software.amazon.awscdk.services.ec2.Port;
@@ -42,8 +43,10 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 
 
 
-public class EthBeaconChainStack extends Stack {
+public class Goeth extends Stack {
 
+    public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
+        LookupMachineImageProps.builder().name("geth-20210605153622").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -64,19 +67,15 @@ public class EthBeaconChainStack extends Stack {
     private AutoScalingGroup    ethBackendAutoScalingGroup      = null;
     private IVolume             ethChainDataVolume              = null;
 
-    public EthBeaconChainStack(final Construct scope, final String id) {
-        this(scope, id, null);
+    public Goeth(final Construct scope, final String id, Vpc targetVpc) {
+        this(scope, id, null, targetVpc);
     }
 
-    public EthBeaconChainStack(final Construct scope, final String id, final StackProps props) {
+    public Goeth(final Construct scope, final String id, final StackProps props, Vpc targetVpc) {
         super(scope, id, props);
 
         // Configure a VPC
-        this.vpc = Vpc.Builder.create(this, "EthVpc")
-            .cidr(VPC_CIDR)
-            .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
-            .maxAzs(Integer.valueOf(1))
-            .build();
+        this.vpc = targetVpc;
         
         // Configure a persistent volume for chain data
         getEthChainDataVolume();
@@ -165,8 +164,8 @@ public class EthBeaconChainStack extends Stack {
             this.ethBackendAutoScalingGroup = AutoScalingGroup.Builder.create(this, "backendAsg")
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
-                .machineImage(getMachineImage())
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
+                .machineImage(GOETH_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
                 .init(getEth2NodeCloudInit())
@@ -196,15 +195,6 @@ public class EthBeaconChainStack extends Stack {
         return this.ethBackendAutoScalingGroup;
     }
 
-    private static IMachineImage getMachineImage() {
-        return MachineImage.genericLinux(
-            new HashMap<String, String>(){
-            {
-                put("us-east-1", "ami-0db6c6238a40c0681");
-                put("us-east-2", "ami-03b6c8bd55e00d5ed");
-            }});
-    }
-
     protected CloudFormationInit getEth2NodeCloudInit() {
         return CloudFormationInit.fromElements(
             // Store the volume data
@@ -212,8 +202,8 @@ public class EthBeaconChainStack extends Stack {
                 InitCommandOptions.builder().env(
                     new HashMap<String, String>(){
                         {
-                            put("ETH_VOLUME_ID", EthBeaconChainStack.this.getEthChainDataVolume().getVolumeId());
-                            put("ETH_VOLUME_REGION", EthBeaconChainStack.this.getRegion());
+                            put("ETH_VOLUME_ID", Goeth.this.getEthChainDataVolume().getVolumeId());
+                            put("ETH_VOLUME_REGION", Goeth.this.getRegion());
                         }
                     }).build()),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
