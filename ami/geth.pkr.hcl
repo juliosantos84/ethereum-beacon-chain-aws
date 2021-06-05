@@ -26,7 +26,7 @@ variable "skip_create_ami" {
 }
 
 locals {
-  target_ami_name = "geth-${formatdate("YYYYMMDDhhmmss", timestamp())}"
+  target_ami_name = "goeth-${formatdate("YYYYMMDDhhmmss", timestamp())}"
   skip_create_ami = false
 }
 
