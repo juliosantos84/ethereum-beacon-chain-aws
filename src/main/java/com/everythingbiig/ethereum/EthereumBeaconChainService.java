@@ -20,7 +20,7 @@ public class EthereumBeaconChainService extends Construct {
                     .region(System.getenv("CDK_DEFAULT_REGION"))
                     .build())
             .build());
-
+            
         this.lighthouse = new  Lighthouse(this, "lighthouse", StackProps.builder()
             .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))

@@ -4,7 +4,10 @@
 sudo apt update
 
 # Install the cli
-sudo apt install awscli -y
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.0.30.zip" \
+--output /tmp/awscliv2.zip \
+&& tar -xzvf awscliv2.zip -C /tmp/ \
+&& sudo /tmp/aws/install
 
 # DO THIS LAST bc of the cd ${AWS_ROOT}
 # Install cfn helper scripts

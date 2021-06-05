@@ -21,8 +21,6 @@ import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitCommandOptions;
-import software.amazon.awscdk.services.ec2.InitFile;
-import software.amazon.awscdk.services.ec2.InitFileAssetOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -81,10 +79,10 @@ public class EthBeaconChainStack extends Stack {
             .build();
         
         // Configure a persistent volume for chain data
-        this.ethChainDataVolume = getEthChainDataVolume();
+        getEthChainDataVolume();
 
         // Autoscaling group for ETH backend
-        this.ethBackendAutoScalingGroup = getEthBackendAutoScalingGroup();
+        getEthBackendAutoScalingGroup();
         
         // Configure a load balancer and ec2 ASG
         // this.publicLb = getPublicLoadBalancer();
@@ -170,7 +168,6 @@ public class EthBeaconChainStack extends Stack {
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
                 .machineImage(getMachineImage())
                 .keyName("eth-stack")
-                .userData(getEthUserData())
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
                 .init(getEth2NodeCloudInit())
                 .minCapacity(MIN_GETH_INSTANCES)
@@ -186,8 +183,6 @@ public class EthBeaconChainStack extends Stack {
                             Duration.minutes(Integer.valueOf(5))).build()))
                 .build();
         }
-
-        this.getEthUserData().addSignalOnExitCommand(ethBackendAutoScalingGroup);
 
         // Grant the backendAsg access to attacht he volume
         this.getEthChainDataVolume().grantAttachVolumeByResourceTag(
@@ -212,58 +207,23 @@ public class EthBeaconChainStack extends Stack {
 
     protected CloudFormationInit getEth2NodeCloudInit() {
         return CloudFormationInit.fromElements(
-                InitCommand.shellCommand("sudo add-apt-repository -y ppa:ethereum/ethereum"),
-                InitCommand.shellCommand("sudo apt update"),
-                InitCommand.shellCommand("sudo apt install awscli -y"),
-                InitCommand.shellCommand("sudo apt install geth"),
-                // Store the volume data
-                InitCommand.shellCommand("echo ${ETH_VOLUME_ID} > /home/ubuntu/eth-volume-id && echo ${ETH_VOLUME_REGION} > /home/ubuntu/eth-volume-region", 
-                    InitCommandOptions.builder().env(
-                        new HashMap<String, String>(){
-                            {
-                                put("ETH_VOLUME_ID", EthBeaconChainStack.this.getEthChainDataVolume().getVolumeId());
-                                put("ETH_VOLUME_REGION", EthBeaconChainStack.this.getRegion());
-                            }
-                        }).build()),
-                InitFile.fromAsset("/etc/systemd/system/geth.service", "src/main/resources/units/geth.service"),
-                InitFile.fromAsset("/usr/local/bin/attach-goeth-volume.sh", "src/main/resources/bin/attach-goeth-volume.sh", 
-                    InitFileAssetOptions.builder()
-                        .owner("goeth")
-                        .group("goeth")
-                        .mode("755")
-                        .build()),
-                InitFile.fromAsset("/usr/local/bin/detach-goeth-volume.sh", "src/main/resources/bin/detach-goeth-volume.sh", 
-                        InitFileAssetOptions.builder()
-                            .owner("goeth")
-                            .group("goeth")
-                            .mode("755")
-                            .build()),
-                InitFile.fromAsset("/usr/local/bin/format-goeth-volume.sh", "src/main/resources/bin/format-goeth-volume.sh", 
-                        InitFileAssetOptions.builder()
-                            .owner("goeth")
-                            .group("goeth")
-                            .mode("755")
-                            .build()),
-                InitFile.fromAsset("/usr/local/bin/mount-goeth-volume.sh", "src/main/resources/bin/mount-goeth-volume.sh", 
-                    InitFileAssetOptions.builder()
-                        .owner("goeth")
-                        .group("goeth")
-                        .mode("755")
-                        .build()),
-                InitFile.fromAsset("/usr/local/bin/unmount-goeth-volume.sh", "src/main/resources/bin/unmount-goeth-volume.sh", 
-                    InitFileAssetOptions.builder()
-                        .owner("goeth")
-                        .group("goeth")
-                        .mode("755")
-                        .build()),
-                InitCommand.shellCommand("sudo systemctl daemon-reload"),
-                // It's possible this command generates an error if the volume is not available
-                // That's OK because the service is configured to retry every 30 seconds
-                InitCommand.shellCommand("sudo systemctl start geth", 
-                    InitCommandOptions.builder()
-                        .ignoreErrors(Boolean.TRUE).build()),
-                InitCommand.shellCommand("sudo systemctl status geth")
-                );
+            // Store the volume data
+            InitCommand.shellCommand("echo ${ETH_VOLUME_ID} > /home/ubuntu/eth-volume-id && echo ${ETH_VOLUME_REGION} > /home/ubuntu/eth-volume-region", 
+                InitCommandOptions.builder().env(
+                    new HashMap<String, String>(){
+                        {
+                            put("ETH_VOLUME_ID", EthBeaconChainStack.this.getEthChainDataVolume().getVolumeId());
+                            put("ETH_VOLUME_REGION", EthBeaconChainStack.this.getRegion());
+                        }
+                    }).build()),
+            InitCommand.shellCommand("sudo systemctl daemon-reload"),
+            // It's possible this command generates an error if the volume is not available
+            // That's OK because the service is configured to retry every 30 seconds
+            InitCommand.shellCommand("sudo systemctl start geth", 
+                InitCommandOptions.builder()
+                    .ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl status geth")
+        );
     }
 
     public static NetworkListenerProps getNetworkListenerProps(Protocol protocol, Integer port) {
