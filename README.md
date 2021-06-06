@@ -28,23 +28,12 @@ I'm following [this]() guide to spin up a testnet stack on AWS:
 - Scripted volume attachment/detachment to avoid loss of data
 
 ## Deployments
-An ETH2 validator node has unique validator keys which can only be used by one validator at a time.  
-If two instances of the stack are running with the same keys then it's possible both will generate different blocks and lead to financial penalties.
+Set the env vars and run the deploy script.
 
-### Before deploying
-- Ensure the current state is in source control or can otherwise be redeployed
-- Ensure the changeset to be deployed is in source control
-- Ensure the target environment has been boostrapped:
-    - `cdk boostrap` must be run
-    - `ethBackendKeyPair` must be created in the console
-    
-### Deploying
-To ensure we're never running two nodes at a time we must:
-1. Scale down the ASG to desired instance count = 0
-    1. This forces the geth service to stop and the volume to be detached
-2. Deploy the updated stack
-3. Scale up the ASG to desired instance count = 1
-    1. This forces the volume to be attached and the geth service to start
+```
+export BASTION_ALLOWED_CIDR=71.172.127.207/32
+bin/deploy-stacks.sh
+```
 
 ### After deploying
 - Ensure the current state is in source control.

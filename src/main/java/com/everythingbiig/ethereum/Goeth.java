@@ -68,17 +68,20 @@ public class Goeth extends Stack {
     private SecurityGroup       backendAsgSecurityGroup         = null;
     private AutoScalingGroup    ethBackendAutoScalingGroup      = null;
     private List<IVolume>       chaindataVolumes        = null;
+    private IPeer adminSecurityGroup = null;
 
-    public Goeth(final Construct scope, final String id, Vpc targetVpc) {
-        this(scope, id, null, targetVpc);
+    public Goeth(final Construct scope, final String id, Vpc targetVpc, IPeer adminSecurityGroup) {
+        this(scope, id, targetVpc, adminSecurityGroup, null);
     }
 
-    public Goeth(final Construct scope, final String id, final StackProps props, Vpc targetVpc) {
+    public Goeth(final Construct scope, final String id, Vpc targetVpc, IPeer adminSecurityGroup, final StackProps props) {
         super(scope, id, props);
 
         // Configure a VPC
         this.vpc = targetVpc;
         
+        this.adminSecurityGroup = adminSecurityGroup;
+
         // Configure a persistent volume for chain data
         getChaindataVolumes();
 
@@ -157,11 +160,9 @@ public class Goeth extends Stack {
             this.backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
                 .vpc(this.vpc)
                 .build();
-
-            backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(GOETH_PORT));
-            backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.udp(GOETH_PORT));
-            backendAsgSecurityGroup.addIngressRule(Peer.anyIpv4(), Port.tcp(22)); // TEST
-            backendAsgSecurityGroup.addIngressRule(VPC_CIDR_PEER, Port.tcp(22)); // TEST
+            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.vpc.getVpcCidrBlock()), Port.tcp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.vpc.getVpcCidrBlock()), Port.udp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(this.adminSecurityGroup, Port.tcp(22));
         }
         return this.backendAsgSecurityGroup;
     }
