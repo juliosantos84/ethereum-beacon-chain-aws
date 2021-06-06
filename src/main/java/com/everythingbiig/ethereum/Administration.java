@@ -4,6 +4,7 @@ import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.ec2.BastionHostLinux;
+import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
@@ -27,30 +28,37 @@ public class Administration extends Stack {
     public Administration(Construct scope, String id, Vpc vpc, StackProps props) {
         super(scope, id, props);
         this.vpc = vpc;
-        this.bastionSecurityGroup = SecurityGroup.Builder.create(this, "bastion")
-            .vpc(this.vpc)
-            .securityGroupName("bastionSecurityGroup")
-            .build();
-
-        String bastionAllowedCidr = System.getenv("BASTION_ALLOWED_CIDR");
-
-        if(bastionAllowedCidr != null && bastionAllowedCidr.length() > 0){
-            this.bastionSecurityGroup.addIngressRule(
-                Peer.ipv4(bastionAllowedCidr), 
-                Port.tcp(Integer.valueOf(22))
-            );
-        }
+        
 
         this.bastion = BastionHostLinux.Builder.create(this, id)
             .vpc(vpc)
             .instanceName("Bastion")
             .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MICRO))
             .machineImage(MachineImage.latestAmazonLinux())
-            .securityGroup(bastionSecurityGroup)
+            .securityGroup(getBastionSecurityGroup())
             .build();
     }
 
     public ISecurityGroup getBastionSecurityGroup() {
+        if(this.bastionSecurityGroup == null) {
+            this.bastionSecurityGroup = SecurityGroup.Builder.create(this, "bastion")
+                .vpc(this.vpc)
+                .securityGroupName("bastionSecurityGroup")
+                .build();
+
+            String bastionAllowedCidr = System.getenv("BASTION_ALLOWED_CIDR");
+
+            if(bastionAllowedCidr != null && bastionAllowedCidr.length() > 0){
+                this.bastionSecurityGroup.addIngressRule(
+                    Peer.ipv4(bastionAllowedCidr), 
+                    Port.tcp(Integer.valueOf(22))
+                );
+            }
+        }
         return this.bastionSecurityGroup;
+    }
+
+    public IPeer getBastionCidr() {
+        return Peer.ipv4(this.bastion.getInstancePrivateIp()+"/32");
     }
 }
