@@ -31,7 +31,7 @@ I'm following [this]() guide to spin up a testnet stack on AWS:
 Set the env vars and run the deploy script.
 
 ```
-export BASTION_ALLOWED_CIDR=71.172.127.207/32
+export BASTION_ALLOWED_CIDR=1.1.1.1/32
 bin/deploy-stacks.sh
 ```
 

@@ -35,17 +35,18 @@ public class EthereumBeaconChainService extends Construct {
         this.goeth = new Goeth(this, "goeth", this.networking.getAppVpc(), 
             this.administration.getBastionCidr(), 
             StackProps.builder()
-            .env(Environment.builder()
-                .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                .region(System.getenv("CDK_DEFAULT_REGION"))
-                .build())
-            .build());
-
-        this.lighthouse = new  Lighthouse(this, "lighthouse", StackProps.builder()
-            .env(Environment.builder()
+                .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
                     .region(System.getenv("CDK_DEFAULT_REGION"))
                     .build())
+            .build());
+
+        this.lighthouse = new  Lighthouse(this, "lighthouse", 
+            StackProps.builder()
+                .env(Environment.builder()
+                        .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
+                        .region(System.getenv("CDK_DEFAULT_REGION"))
+                        .build())
             .build(), this.networking.getAppVpc());
     }
 }

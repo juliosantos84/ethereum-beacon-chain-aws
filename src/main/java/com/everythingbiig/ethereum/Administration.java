@@ -13,6 +13,8 @@ import software.amazon.awscdk.services.ec2.MachineImage;
 import software.amazon.awscdk.services.ec2.Peer;
 import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
+import software.amazon.awscdk.services.ec2.SubnetSelection;
+import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
 
 public class Administration extends Stack {
@@ -32,11 +34,19 @@ public class Administration extends Stack {
 
         this.bastion = BastionHostLinux.Builder.create(this, id)
             .vpc(vpc)
+            .subnetSelection(SubnetSelection.builder()
+                .subnetType(SubnetType.PUBLIC)
+                .build())
             .instanceName("Bastion")
             .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MICRO))
             .machineImage(MachineImage.latestAmazonLinux())
             .securityGroup(getBastionSecurityGroup())
             .build();
+        
+    }
+
+    private String getBastionAllowedCidr() {
+        return System.getenv("BASTION_ALLOWED_CIDR");
     }
 
     public ISecurityGroup getBastionSecurityGroup() {
@@ -46,7 +56,7 @@ public class Administration extends Stack {
                 .securityGroupName("bastionSecurityGroup")
                 .build();
 
-            String bastionAllowedCidr = System.getenv("BASTION_ALLOWED_CIDR");
+            String bastionAllowedCidr = getBastionAllowedCidr();
 
             if(bastionAllowedCidr != null && bastionAllowedCidr.length() > 0){
                 this.bastionSecurityGroup.addIngressRule(
