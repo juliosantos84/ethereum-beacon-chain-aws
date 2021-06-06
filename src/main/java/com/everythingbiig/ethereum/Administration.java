@@ -1,5 +1,7 @@
 package com.everythingbiig.ethereum;
 
+import java.util.Arrays;
+
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
@@ -16,24 +18,26 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 
 public class Administration extends Stack {
     
-    private Vpc vpc = null;
+    private Vpc dmzVpc = null;
     private BastionHostLinux bastion = null;
     private ISecurityGroup bastionSecurityGroup = null;
 
-    public Administration(final Construct scope, final String id, Vpc vpc) {
-        this(scope, id, vpc, null);
+    public Administration(final Construct scope, final String id, Vpc dmzVpc, Vpc appVpc) {
+        this(scope, id, dmzVpc, appVpc, null);
     }
 
-    public Administration(Construct scope, String id, Vpc vpc, StackProps props) {
+    public Administration(Construct scope, String id, Vpc dmzVpc, Vpc appVpc, StackProps props) {
         super(scope, id, props);
-        this.vpc = vpc;
+        this.dmzVpc = dmzVpc;
         
 
         this.bastion = BastionHostLinux.Builder.create(this, id)
-            .vpc(vpc)
+            .vpc(dmzVpc)
             .subnetSelection(SubnetSelection.builder()
                 .subnetType(SubnetType.PUBLIC)
                 .build())
@@ -42,7 +46,14 @@ public class Administration extends Stack {
             .machineImage(MachineImage.latestAmazonLinux())
             .securityGroup(getBastionSecurityGroup())
             .build();
-        
+
+        this.bastion.getGrantPrincipal()
+            .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
+                .effect(Effect.ALLOW)
+                .resources(Arrays.asList(
+                    "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
+                .build());
     }
 
     private String getBastionAllowedCidr() {
@@ -52,7 +63,7 @@ public class Administration extends Stack {
     public ISecurityGroup getBastionSecurityGroup() {
         if(this.bastionSecurityGroup == null) {
             this.bastionSecurityGroup = SecurityGroup.Builder.create(this, "bastion")
-                .vpc(this.vpc)
+                .vpc(this.dmzVpc)
                 .securityGroupName("bastionSecurityGroup")
                 .build();
 

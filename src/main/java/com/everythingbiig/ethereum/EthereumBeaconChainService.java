@@ -24,7 +24,7 @@ public class EthereumBeaconChainService extends Construct {
             .build());
 
         this.administration = new Administration(this, "administration", 
-            this.networking.getDmzVpc(), 
+            this.networking.getDmzVpc(), this.networking.getAppVpc(),
             StackProps.builder()
                 .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
