@@ -11,7 +11,7 @@ User=lighthousebeacon
 Group=lighthousebeacon
 Restart=always
 RestartSec=5
-ExecStart=/usr/local/bin/lighthouse beacon_node --datadir /var/lib/lighthouse --network pyrmont --staking --eth1-endpoint http://goeth.ethereum.everythingbiig.com:8545 --metrics
+ExecStart=/usr/local/bin/lighthouse beacon_node --datadir /var/lib/lighthouse --network pyrmont --staking --eth1-endpoint http://goeth.private.ethereum.everythingbiig.com:8545 --metrics
 [Install]
 WantedBy=multi-user.target
 UNIT

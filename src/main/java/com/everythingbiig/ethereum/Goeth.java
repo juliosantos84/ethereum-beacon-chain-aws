@@ -45,6 +45,8 @@ import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.PrivateHostedZone;
+import software.amazon.awscdk.services.route53.RecordTarget;
+import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 
 
 
@@ -129,7 +131,8 @@ public class Goeth extends Stack {
             
             ARecord.Builder.create(this, "privateLoadBalancerARecord")
                 .zone(this.privateHostedZone)
-                // .target(RecordTarget.fromAlias(NetworkLoadBalancer))
+                .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
+                .recordName("goeth.private.ethereum.everythingbiig.com")
                 .build();
                 
             NetworkListener goEthListener = this.privateLoadBalancer.addListener("goeth", 
