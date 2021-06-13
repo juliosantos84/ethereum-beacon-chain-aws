@@ -35,3 +35,5 @@ target
 cdk.out
 
 packer_cache
+
+tmp/
