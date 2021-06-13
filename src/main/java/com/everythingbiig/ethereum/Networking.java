@@ -5,6 +5,9 @@ import java.util.Arrays;
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
+import software.amazon.awscdk.services.ec2.CfnRoute;
+import software.amazon.awscdk.services.ec2.CfnVPCPeeringConnection;
+import software.amazon.awscdk.services.ec2.ISubnet;
 import software.amazon.awscdk.services.ec2.SubnetConfiguration;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
@@ -49,7 +52,36 @@ public class Networking extends Stack {
 
         getPrivateHostedZone();
 
+        configureCrossVpcRouting();
         // getStorageVpc()
+    }
+
+    private void configureCrossVpcRouting() {
+        CfnVPCPeeringConnection dmz2AppPeerConn = CfnVPCPeeringConnection.Builder.create(this, "dmz2App")
+            .vpcId(dmzVpc.getVpcId())
+            .peerOwnerId(getAccount())
+            .peerRegion(getRegion())
+            .peerVpcId(appVpc.getVpcId())
+            .build();
+
+        // enable dmz public -> app private
+        for (ISubnet dmzPublic : this.getDmzVpc().getPublicSubnets()) {
+            CfnRoute.Builder.create(this, "dmzPubToAppPriv"+dmzPublic.getAvailabilityZone())
+                .vpcPeeringConnectionId(dmz2AppPeerConn.getRef())
+                .routeTableId(dmzPublic.getRouteTable().getRouteTableId())
+                .destinationCidrBlock(appVpc.getVpcCidrBlock())
+                .build();
+        }
+
+        // enable app private -> dmz public
+        for (ISubnet appPrivate : this.getAppVpc().getPrivateSubnets()) {
+            CfnRoute.Builder.create(this, "appPrivToDmzPub"+appPrivate.getAvailabilityZone())
+                .vpcPeeringConnectionId(dmz2AppPeerConn.getRef())
+                .routeTableId(appPrivate.getRouteTable().getRouteTableId())
+                .destinationCidrBlock(dmzVpc.getVpcCidrBlock())
+                .build();
+        }
+        
     }
 
     public Vpc getDmzVpc() {

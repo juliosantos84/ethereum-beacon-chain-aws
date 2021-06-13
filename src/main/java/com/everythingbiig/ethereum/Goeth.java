@@ -34,7 +34,7 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Volume;
-import software.amazon.awscdk.services.ec2.Vpc;
+import software.amazon.awscdk.services.ec2.VpcEndpointService;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListener;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerProps;
@@ -42,10 +42,8 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkLoadBalance
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkTargetGroup;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
-import software.amazon.awscdk.services.iam.IPrincipal;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.route53.ARecord;
-import software.amazon.awscdk.services.route53.PrivateHostedZone;
 import software.amazon.awscdk.services.route53.RecordTarget;
 import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 
@@ -68,14 +66,13 @@ public class Goeth extends Stack {
     static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(1000));
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
-    private Vpc                 vpc                             = null;
+
     private NetworkLoadBalancer privateLoadBalancer                        = null;
     private SecurityGroup       backendAsgSecurityGroup         = null;
     private AutoScalingGroup    goethAsg      = null;
     private List<IVolume>       chaindataVolumes        = null;
-    private IPrincipal administrationPrincipal = null;
-    private IPeer administrationCidr = null;
-    private PrivateHostedZone privateHostedZone = null;
+    private VpcEndpointService privateLoadBalancerVpcEndpoint = null;
+    private EthereumStackProps goethProps = null;
 
     public Goeth(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -84,12 +81,7 @@ public class Goeth extends Stack {
     public Goeth(final Construct scope, final String id, final EthereumStackProps goethProps, final StackProps props) {
         super(scope, id, props);
 
-        if(goethProps != null) {
-            this.vpc = goethProps.getAppVpc();
-            this.administrationCidr = goethProps.getAdministrationCidr();
-            this.privateHostedZone = goethProps.getPrivateHostedZone();
-            this.administrationPrincipal = goethProps.getAdministrationPrincipal();
-        }        
+        this.goethProps = goethProps;  
 
         // Configure a persistent volume for chain data
         getChaindataVolumes();
@@ -102,16 +94,16 @@ public class Goeth extends Stack {
     }
 
     protected List<IVolume> getChaindataVolumes() {
-        if (this.chaindataVolumes == null && this.vpc != null) {
+        if (this.chaindataVolumes == null && this.goethProps.getAppVpc() != null) {
             
             this.chaindataVolumes = new ArrayList<IVolume>();
-            for(String az : this.vpc.getAvailabilityZones()) {
+            for(String az : this.goethProps.getAppVpc().getAvailabilityZones()) {
                 IVolume vol = Volume.Builder.create(this, "chaindataVolume"+az)
                 .volumeName("chaindataVolume-"+az)
                 .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
                 .size(ETH_DATA_VOLUME_SIZE)
                 .encrypted(Boolean.TRUE)
-                .removalPolicy(RemovalPolicy.DESTROY)
+                .removalPolicy(RemovalPolicy.SNAPSHOT)
                 .availabilityZone(az)
                 .build();
                 Tags.of(vol).add("Name", "chaindata");
@@ -124,17 +116,17 @@ public class Goeth extends Stack {
 
     protected NetworkLoadBalancer getPrivateLoadBalancer() {
         if (this.privateLoadBalancer == null) {
-            this.privateLoadBalancer = NetworkLoadBalancer.Builder.create(this, "publicLb")
-                .vpc(vpc)
+            this.privateLoadBalancer = NetworkLoadBalancer.Builder.create(this, "goethLoadBalancer")
+                .vpc(this.goethProps.getAppVpc())
                 .vpcSubnets(SubnetSelection.builder()
                     .subnetType(SubnetType.PRIVATE).build())
                 .internetFacing(Boolean.FALSE)
                 .crossZoneEnabled(Boolean.TRUE)
                 .build();
             
-            if(this.privateHostedZone != null) {
+            if(this.goethProps.getPrivateHostedZone() != null) {
                 ARecord.Builder.create(this, "goethPrivateARecord")
-                    .zone(this.privateHostedZone)
+                    .zone(this.goethProps.getPrivateHostedZone())
                     .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
                     .recordName("goeth.private.ethereum.everythingbiig.com")
                     .build();
@@ -174,21 +166,21 @@ public class Goeth extends Stack {
     }
 
     protected SecurityGroup getEthBackendAsgSecurityGroup() {
-        if (this.backendAsgSecurityGroup == null && this.vpc != null) {
+        if (this.backendAsgSecurityGroup == null && this.goethProps.getAppVpc() != null) {
             this.backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
-                .vpc(this.vpc)
+                .vpc(this.goethProps.getAppVpc())
                 .build();
-            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.vpc.getVpcCidrBlock()), Port.tcp(GOETH_PORT));
-            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.vpc.getVpcCidrBlock()), Port.udp(GOETH_PORT));
-            backendAsgSecurityGroup.addIngressRule(this.administrationCidr, Port.tcp(22));
+            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.tcp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.udp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(this.goethProps.getAdministrationCidr(), Port.tcp(22));
         }
         return this.backendAsgSecurityGroup;
     }
 
     protected AutoScalingGroup getGoethBackendAsg() {
-        if (this.goethAsg == null && this.vpc != null) {
+        if (this.goethAsg == null && this.goethProps.getAppVpc() != null) {
             this.goethAsg = AutoScalingGroup.Builder.create(this, "goeth")
-                .vpc(vpc)
+                .vpc(this.goethProps.getAppVpc())
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
                 .machineImage(GOETH_AMI)
@@ -215,15 +207,6 @@ public class Goeth extends Stack {
                     .resources(Arrays.asList("*"))
                     .build());
 
-            if(this.administrationPrincipal != null) {
-                this.goethAsg.getGrantPrincipal()
-                    .addToPrincipalPolicy(PolicyStatement.Builder.create()
-                    .actions(Arrays.asList("ssm:StartSession"))
-                    .effect(Effect.ALLOW)
-                    .resources(Arrays.asList("*"))
-                    .build());
-            }
-
             // Grant the backendAsg access to attacht he volume
             for(IVolume vol : this.getChaindataVolumes()) {
                 vol.grantAttachVolumeByResourceTag(
@@ -243,6 +226,8 @@ public class Goeth extends Stack {
             InitCommand.shellCommand("sudo apt install awscli jq -y"),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-name-tag"),
+            InitCommand.shellCommand("echo /var/lib/goethereum > /home/ubuntu/volume-mount-path"),
+            InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-mount-path-owner"),
             // It's possible this command generates an error if the volume is not available
             // That's OK because the service is configured to retry every 30 seconds
             InitCommand.shellCommand("sudo systemctl start geth", 

@@ -1,5 +1,6 @@
 package com.everythingbiig.ethereum;
 
+import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.iam.IPrincipal;
@@ -53,7 +54,13 @@ public class EthereumStackProps {
     public void setAdministrationPrincipal(IPrincipal administrationPrincipal) {
         this.administrationPrincipal = administrationPrincipal;
     }
-
+    public Duration getTargetRegistrationDelay() {
+        return Duration.seconds(15);
+    }
+    public Integer getAdministrationPort() {
+        return Integer.valueOf(22);
+    }
+    
     public static final class EthereumPropsBuilder {
         private Vpc dmzVpc = null;
         private Vpc appVpc = null;

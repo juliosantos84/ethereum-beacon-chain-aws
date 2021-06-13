@@ -3,6 +3,7 @@ package com.everythingbiig.ethereum;
 import java.util.Arrays;
 
 import software.amazon.awscdk.core.Construct;
+import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.ec2.BastionHostLinux;
@@ -17,20 +18,17 @@ import software.amazon.awscdk.services.ec2.Port;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
-import software.amazon.awscdk.services.ec2.Vpc;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.IPrincipal;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.route53.ARecord;
-import software.amazon.awscdk.services.route53.PublicHostedZone;
 import software.amazon.awscdk.services.route53.RecordTarget;
 
 public class Administration extends Stack {
     
-    private Vpc dmzVpc = null;
     private BastionHostLinux bastion = null;
     private ISecurityGroup bastionSecurityGroup = null;
-    private PublicHostedZone publicHostedZone = null;
+    private EthereumStackProps adminProps = null;
 
     public Administration(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -38,15 +36,11 @@ public class Administration extends Stack {
 
     public Administration(Construct scope, String id, EthereumStackProps adminProps, StackProps props) {
         super(scope, id, props);
-
-        if(adminProps != null) {
-            this.dmzVpc = adminProps.getDmzVpc();
-            this.publicHostedZone = adminProps.getPublicHostedZone();
-        }
         
+        this.adminProps = adminProps;
 
         this.bastion = BastionHostLinux.Builder.create(this, id)
-            .vpc(dmzVpc)
+            .vpc(this.adminProps.getDmzVpc())
             .subnetSelection(SubnetSelection.builder()
                 .subnetType(SubnetType.PUBLIC)
                 .build())
@@ -56,17 +50,27 @@ public class Administration extends Stack {
             .securityGroup(getBastionSecurityGroup())
             .build();
 
-        if(this.publicHostedZone != null) {
+        if(this.adminProps.getPublicHostedZone() != null) {
             ARecord.Builder.create(this, "bastionPublicARecord")
-            .zone(this.publicHostedZone)
-            .target(RecordTarget.fromIpAddresses(this.bastion.getInstancePublicIp()))
-            .recordName("bastion.public.ethereum.everythingbiig.com")
-            .build();
+                .zone(this.adminProps.getPublicHostedZone())
+                .target(RecordTarget.fromIpAddresses(this.bastion.getInstancePublicIp()))
+                .recordName("bastion.public.ethereum.everythingbiig.com")
+                .ttl(Duration.minutes(1))
+                .build();
         }
+
+        this.adminProps.getPrivateHostedZone().addVpc(this.adminProps.getDmzVpc());
 
         this.bastion.getGrantPrincipal()
             .addToPrincipalPolicy(PolicyStatement.Builder.create()
                 .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
+                .effect(Effect.ALLOW)
+                .resources(Arrays.asList(
+                    "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
+                .build());
+        this.bastion.getGrantPrincipal()
+            .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                .actions(Arrays.asList("ssm:StartSession"))
                 .effect(Effect.ALLOW)
                 .resources(Arrays.asList(
                     "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
@@ -80,7 +84,7 @@ public class Administration extends Stack {
     private ISecurityGroup getBastionSecurityGroup() {
         if(this.bastionSecurityGroup == null) {
             this.bastionSecurityGroup = SecurityGroup.Builder.create(this, "bastion")
-                .vpc(this.dmzVpc)
+                .vpc(this.adminProps.getDmzVpc())
                 .securityGroupName("bastionSecurityGroup")
                 .build();
 
