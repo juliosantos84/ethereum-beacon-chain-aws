@@ -8,6 +8,8 @@ import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.ec2.SubnetConfiguration;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
+import software.amazon.awscdk.services.route53.PrivateHostedZone;
+import software.amazon.awscdk.services.route53.PublicHostedZone;
 
 /**
  * Defines a networking stack based on tiers.
@@ -21,11 +23,18 @@ public class Networking extends Stack {
     // IGWs, Loadbalancers, NATs, Bastions
     private Vpc dmzVpc = null;
 
+    // Public DNS public.ethereum.everythingbiig.com
+    private PublicHostedZone publicHostedZone = null;
+
     // Apps and Services
     private Vpc appVpc = null;
 
     // Storage
     private Vpc storageVpc = null;
+
+    // Private DNS internal.ethereum.everythingbiig.com
+    private PrivateHostedZone privateHostedZone = null;
+
 
     public Networking(final Construct scope, final String id) {
         this(scope, id, null);
@@ -38,8 +47,11 @@ public class Networking extends Stack {
 
         getAppVpc();
 
+        getPrivateHostedZone();
+
         // getStorageVpc()
     }
+
     public Vpc getDmzVpc() {
         if(this.dmzVpc == null) {
             // 1024 hosts
@@ -84,5 +96,24 @@ public class Networking extends Stack {
             .build();
         }
         return this.storageVpc;
+    }
+
+    public PrivateHostedZone getPrivateHostedZone() {
+        if( this.privateHostedZone == null) {
+            this.privateHostedZone = PrivateHostedZone.Builder.create(this, "privateHostedZone")
+                .vpc(this.getAppVpc()) // We need a default, so it will be the app vpc
+                .zoneName("private.ethereum.everythingbiig.com")
+                .build();
+        }
+        return this.privateHostedZone;
+    }
+
+    public PublicHostedZone getPublicHostedZone() {
+        if( this.publicHostedZone == null) {
+            this.publicHostedZone = PublicHostedZone.Builder.create(this, "publicHostedZone")
+                .zoneName("public.ethereum.everythingbiig.com")
+                .build();
+        }
+        return this.publicHostedZone;
     }
 }

@@ -32,8 +32,12 @@ public class EthereumBeaconChainService extends Construct {
                     .build())
             .build());
 
-        this.goeth = new Goeth(this, "goeth", this.networking.getAppVpc(), 
-            this.administration.getBastionCidr(), 
+        this.goeth = new Goeth(this, "goeth", 
+            GoethProps.builder()
+                .targetVpc(this.networking.getAppVpc())
+                .privateHostedZone(this.networking.getPrivateHostedZone())
+                .administrationCidr(this.administration.getBastionCidr())
+                .build(), 
             StackProps.builder()
                 .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))

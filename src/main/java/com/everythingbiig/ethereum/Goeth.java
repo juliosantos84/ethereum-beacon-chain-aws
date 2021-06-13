@@ -43,6 +43,8 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkTargetGroup
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.route53.ARecord;
+import software.amazon.awscdk.services.route53.PrivateHostedZone;
 
 
 
@@ -64,23 +66,25 @@ public class Goeth extends Stack {
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
     private Vpc                 vpc                             = null;
-    private NetworkLoadBalancer publicLb                        = null;
+    private NetworkLoadBalancer privateLoadBalancer                        = null;
     private SecurityGroup       backendAsgSecurityGroup         = null;
     private AutoScalingGroup    ethBackendAutoScalingGroup      = null;
     private List<IVolume>       chaindataVolumes        = null;
-    private IPeer adminSecurityGroup = null;
+    private IPeer administrationCidr = null;
+    private PrivateHostedZone privateHostedZone = null;
 
-    public Goeth(final Construct scope, final String id, Vpc targetVpc, IPeer adminSecurityGroup) {
-        this(scope, id, targetVpc, adminSecurityGroup, null);
+    public Goeth(final Construct scope, final String id) {
+        this(scope, id, null, null);
     }
 
-    public Goeth(final Construct scope, final String id, Vpc targetVpc, IPeer adminSecurityGroup, final StackProps props) {
+    public Goeth(final Construct scope, final String id, final GoethProps goethProps, final StackProps props) {
         super(scope, id, props);
 
-        // Configure a VPC
-        this.vpc = targetVpc;
-        
-        this.adminSecurityGroup = adminSecurityGroup;
+        if(goethProps != null) {
+            this.vpc = goethProps.getTargetVpc();
+            this.administrationCidr = goethProps.getAdministrationCidr();
+            this.privateHostedZone = goethProps.getPrivateHostedZone();
+        }        
 
         // Configure a persistent volume for chain data
         getChaindataVolumes();
@@ -93,7 +97,8 @@ public class Goeth extends Stack {
     }
 
     protected List<IVolume> getChaindataVolumes() {
-        if (this.chaindataVolumes == null) {
+        if (this.chaindataVolumes == null && this.vpc != null) {
+            
             this.chaindataVolumes = new ArrayList<IVolume>();
             for(String az : this.vpc.getAvailabilityZones()) {
                 IVolume vol = Volume.Builder.create(this, "chaindataVolume"+az)
@@ -112,28 +117,33 @@ public class Goeth extends Stack {
          
     }
 
-    protected NetworkLoadBalancer getPublicLoadBalancer() {
-        if (this.publicLb == null) {
-            this.publicLb = NetworkLoadBalancer.Builder.create(this, "publicLb")
+    protected NetworkLoadBalancer getPrivateLoadBalancer() {
+        if (this.privateLoadBalancer == null) {
+            this.privateLoadBalancer = NetworkLoadBalancer.Builder.create(this, "publicLb")
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder()
-                    .subnetType(SubnetType.PUBLIC).build())
-                .internetFacing(Boolean.TRUE)
+                    .subnetType(SubnetType.PRIVATE).build())
+                .internetFacing(Boolean.FALSE)
                 .crossZoneEnabled(Boolean.TRUE)
                 .build();
             
-            NetworkListener goEthListener = this.publicLb.addListener("goeth", 
+            ARecord.Builder.create(this, "privateLoadBalancerARecord")
+                .zone(this.privateHostedZone)
+                // .target(RecordTarget.fromAlias(NetworkLoadBalancer))
+                .build();
+                
+            NetworkListener goEthListener = this.privateLoadBalancer.addListener("goeth", 
                 NetworkListenerProps.builder()
                     .protocol(Protocol.TCP_UDP)
                     .port(GOETH_PORT)
-                    .loadBalancer(this.publicLb)
+                    .loadBalancer(this.privateLoadBalancer)
                     .build());            
 
-            NetworkListener sshListener = this.publicLb.addListener("ssh", 
+            NetworkListener sshListener = this.privateLoadBalancer.addListener("ssh", 
                 NetworkListenerProps.builder()
                     .protocol(Protocol.TCP)
                     .port(SSH_PORT)
-                    .loadBalancer(this.publicLb)
+                    .loadBalancer(this.privateLoadBalancer)
                     .build());    
 
             NetworkTargetGroup goEthTargetGroup = goEthListener.addTargets("goeth", 
@@ -152,23 +162,23 @@ public class Goeth extends Stack {
                     .build()
             );
         }
-        return this.publicLb;
+        return this.privateLoadBalancer;
     }
 
     protected SecurityGroup getEthBackendAsgSecurityGroup() {
-        if (this.backendAsgSecurityGroup == null) {
+        if (this.backendAsgSecurityGroup == null && this.vpc != null) {
             this.backendAsgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
                 .vpc(this.vpc)
                 .build();
             backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.vpc.getVpcCidrBlock()), Port.tcp(GOETH_PORT));
             backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.vpc.getVpcCidrBlock()), Port.udp(GOETH_PORT));
-            backendAsgSecurityGroup.addIngressRule(this.adminSecurityGroup, Port.tcp(22));
+            backendAsgSecurityGroup.addIngressRule(this.administrationCidr, Port.tcp(22));
         }
         return this.backendAsgSecurityGroup;
     }
 
     protected AutoScalingGroup getEthBackendAutoScalingGroup() {
-        if (this.ethBackendAutoScalingGroup == null) {
+        if (this.ethBackendAutoScalingGroup == null && this.vpc != null) {
             this.ethBackendAutoScalingGroup = AutoScalingGroup.Builder.create(this, "goeth")
                 .vpc(vpc)
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
@@ -195,16 +205,16 @@ public class Goeth extends Stack {
                     .effect(Effect.ALLOW)
                     .resources(Arrays.asList("*"))
                     .build());
-        }
 
-        // Grant the backendAsg access to attacht he volume
-        for(IVolume vol : this.getChaindataVolumes()) {
-            vol.grantAttachVolumeByResourceTag(
-                this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
-                Arrays.asList(this.ethBackendAutoScalingGroup));
-            vol.grantDetachVolumeByResourceTag(
-                this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
-                Arrays.asList(this.ethBackendAutoScalingGroup));
+            // Grant the backendAsg access to attacht he volume
+            for(IVolume vol : this.getChaindataVolumes()) {
+                vol.grantAttachVolumeByResourceTag(
+                    this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
+                    Arrays.asList(this.ethBackendAutoScalingGroup));
+                vol.grantDetachVolumeByResourceTag(
+                    this.ethBackendAutoScalingGroup.getGrantPrincipal(), 
+                    Arrays.asList(this.ethBackendAutoScalingGroup));
+            }
         }
 
         return this.ethBackendAutoScalingGroup;
