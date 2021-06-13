@@ -24,7 +24,11 @@ public class EthereumBeaconChainService extends Construct {
             .build());
 
         this.administration = new Administration(this, "administration", 
-            this.networking.getDmzVpc(), this.networking.getAppVpc(),
+            EthereumStackProps.builder()
+                .dmzVpc(this.networking.getDmzVpc())
+                .publicHostedZone(this.networking.getPublicHostedZone())
+                .privateHostedZone(this.networking.getPrivateHostedZone())
+                .build(),
             StackProps.builder()
                 .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
@@ -33,10 +37,11 @@ public class EthereumBeaconChainService extends Construct {
             .build());
 
         this.goeth = new Goeth(this, "goeth", 
-            GoethProps.builder()
-                .targetVpc(this.networking.getAppVpc())
+            EthereumStackProps.builder()
+                .appVpc(this.networking.getAppVpc())
                 .privateHostedZone(this.networking.getPrivateHostedZone())
-                .administrationCidr(this.administration.getBastionCidr())
+                .administrationPrincipal(this.administration.getAdministrationPrincipal())
+                .administrationCidr(this.administration.getAdministrationCidr())
                 .build(), 
             StackProps.builder()
                 .env(Environment.builder()
@@ -46,11 +51,16 @@ public class EthereumBeaconChainService extends Construct {
             .build());
 
         this.lighthouse = new  Lighthouse(this, "lighthouse", 
+            EthereumStackProps.builder()
+                .appVpc(this.networking.getAppVpc())
+                .privateHostedZone(this.networking.getPrivateHostedZone())
+                .administrationCidr(this.administration.getAdministrationCidr())
+                .build(), 
             StackProps.builder()
                 .env(Environment.builder()
                         .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
                         .region(System.getenv("CDK_DEFAULT_REGION"))
                         .build())
-            .build(), this.networking.getAppVpc());
+            .build());
     }
 }

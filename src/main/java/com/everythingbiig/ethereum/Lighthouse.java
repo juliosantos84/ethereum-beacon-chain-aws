@@ -1,9 +1,16 @@
 package com.everythingbiig.ethereum;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
+import software.amazon.awscdk.core.RemovalPolicy;
+import software.amazon.awscdk.core.Size;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
+import software.amazon.awscdk.core.Tags;
 import software.amazon.awscdk.services.autoscaling.ApplyCloudFormationInitOptions;
 import software.amazon.awscdk.services.autoscaling.AutoScalingGroup;
 import software.amazon.awscdk.services.autoscaling.RollingUpdateOptions;
@@ -12,7 +19,9 @@ import software.amazon.awscdk.services.autoscaling.SignalsOptions;
 import software.amazon.awscdk.services.autoscaling.UpdatePolicy;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
 import software.amazon.awscdk.services.ec2.IMachineImage;
+import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
+import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -21,23 +30,28 @@ import software.amazon.awscdk.services.ec2.MachineImage;
 import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
+import software.amazon.awscdk.services.ec2.Volume;
 import software.amazon.awscdk.services.ec2.Vpc;
 
 public class Lighthouse extends Stack {
     public static final IMachineImage LIGHTHOUSE_AMI = MachineImage.lookup(
         LookupMachineImageProps.builder()
-            .name("lighthouse-20210605180126").build());
+            .name("lighthouse-20210613175458").build());
     private Vpc vpc = null;
     private AutoScalingGroup lighthouseAsg = null;
     private SecurityGroup lighthouseSecurityGroup = null;
-    
-    public Lighthouse(final Construct scope, final String id, Vpc targetVpc) {
-        this(scope, id, null, targetVpc);
+    private List<IVolume> lighthouseVolumes        = null;
+    static final Size       LIGHTHOUSE_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(1000));
+
+    public Lighthouse(final Construct scope, final String id) {
+        this(scope, id, null, null);
     }
 
-    public Lighthouse(final Construct scope, final String id, StackProps props, Vpc targetVpc) {
+    public Lighthouse(final Construct scope, final String id, EthereumStackProps lighthouseProps, StackProps props) {
         super(scope, id, props);
-        this.vpc = targetVpc;
+        if(lighthouseProps != null) {
+            this.vpc = lighthouseProps.getAppVpc();
+        }
         
         getLighthouseAsg();
     }
@@ -64,26 +78,50 @@ public class Lighthouse extends Stack {
                         SignalsOptions.builder().timeout(
                             Duration.minutes(Integer.valueOf(5))).build()))
                 .build();
+
+            // // Grant the backendAsg access to attacht he volume
+            for(IVolume vol : this.getLighthouseVolumes()) {
+                vol.grantAttachVolumeByResourceTag(
+                    this.lighthouseAsg.getGrantPrincipal(), 
+                    Arrays.asList(this.lighthouseAsg));
+                vol.grantDetachVolumeByResourceTag(
+                    this.lighthouseAsg.getGrantPrincipal(), 
+                    Arrays.asList(this.lighthouseAsg));
+            }
         }
-
-        // this.getEthUserData().addSignalOnExitCommand(lighthouseAsg);
-
-        // // Grant the backendAsg access to attacht he volume
-        // this.getEthChainDataVolume().grantAttachVolumeByResourceTag(
-        //     this.lighthouseAsg.getGrantPrincipal(), 
-        //     Arrays.asList(this.lighthouseAsg));
-        
-        // this.getEthChainDataVolume().grantDetachVolumeByResourceTag(
-        //     this.lighthouseAsg.getGrantPrincipal(), 
-        //     Arrays.asList(this.lighthouseAsg));
 
         return this.lighthouseAsg;
     }
 
+    protected List<IVolume> getLighthouseVolumes() {
+        if (this.lighthouseVolumes == null && this.vpc != null) {
+            this.lighthouseVolumes = new ArrayList<IVolume>();
+            for(String az : this.vpc.getAvailabilityZones()) {
+                IVolume vol = Volume.Builder.create(this, "lighthouseVolume"+az)
+                .volumeName("lighthouseVolume-"+az)
+                .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
+                .size(LIGHTHOUSE_VOLUME_SIZE)
+                .encrypted(Boolean.TRUE)
+                .removalPolicy(RemovalPolicy.RETAIN)
+                .availabilityZone(az)
+                .build();
+                Tags.of(vol).add("Name", "lighthouse");
+                this.lighthouseVolumes.add(vol);
+            }
+        }
+        return this.lighthouseVolumes;
+         
+    }
+
     private CloudFormationInit getLighthouseCloudInit() {
         return CloudFormationInit.fromElements(
-                InitCommand.shellCommand("echo initted")                
-                );
+                InitCommand.shellCommand("echo lighthouse > /home/ubuntu/volume-name-tag"),
+                InitCommand.shellCommand("echo /var/lib/lighthouse > /home/ubuntu/volume-mount-path"),
+                InitCommand.shellCommand("echo lighthousebeacon > /home/ubuntu/volume-mount-path-owner"),
+                InitCommand.shellCommand("sudo systemctl start lighthouse", 
+                    InitCommandOptions.builder()
+                        .ignoreErrors(Boolean.TRUE).build())
+            );
     }
 
     protected SecurityGroup getLighthouseSecurityGroup() {
