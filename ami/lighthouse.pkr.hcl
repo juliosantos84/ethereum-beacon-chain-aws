@@ -54,10 +54,28 @@ build {
   sources = ["source.amazon-ebs.lighthouse"]
 
   provisioner "shell" {
+    inline = [
+      "mkdir -p /tmp/bin"
+    ]
+  }
+
+  provisioner "file" {
+    sources = [
+      "src/main/resources/bin/general/attach-volume.sh",
+      "src/main/resources/bin/general/detach-volume.sh",
+      "src/main/resources/bin/general/format-volume.sh",
+      "src/main/resources/bin/general/mount-volume.sh",
+      "src/main/resources/bin/general/unmount-volume.sh"
+    ]
+    destination = "/tmp/bin/"
+  }
+
+  provisioner "shell" {
     scripts = [
       "ami/scripts/provisioner/install-aws-base.sh",
       "ami/scripts/provisioner/lighthouse/create-users.sh",
       "ami/scripts/provisioner/lighthouse/install-binaries.sh",
+      "ami/scripts/provisioner/lighthouse/install-scripts.sh",
       "ami/scripts/provisioner/lighthouse/install-service.sh"
     ]
   }
