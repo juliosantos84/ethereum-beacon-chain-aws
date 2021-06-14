@@ -52,7 +52,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("goeth-20210605205208").build());
+        LookupMachineImageProps.builder().name("goeth-20210613235747").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
