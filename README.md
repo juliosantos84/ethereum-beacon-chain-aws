@@ -51,4 +51,8 @@ Continue following [this](https://someresat.medium.com/guide-to-staking-on-ether
 
 [X] - Create ETH Instance
 
-[X] - Join test net
+[X] - Join goeth to goerli testnet
+
+[ ] - Join lighthouse to pyrmont testnet
+
+[ ] - Externalize instance-specific settings (VPC CIDRs, Domain names, etc)
