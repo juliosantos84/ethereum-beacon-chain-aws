@@ -15,5 +15,6 @@
   "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210613175458:filters.state.0=available:region=us-east-1": "ami-0f58d3999811196f1",
   "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=lighthouse-20210613201350:filters.state.0=available:region=us-east-1": "ami-0e7c5f58c604e9694",
   "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=goeth-20210613235747:filters.state.0=available:region=us-east-1": "ami-06ab16bfa9c2ad526",
-  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=goeth-20210614012218:filters.state.0=available:region=us-east-1": "ami-0c1e6588349824f7c"
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=goeth-20210614012218:filters.state.0=available:region=us-east-1": "ami-0c1e6588349824f7c",
+  "ami:account=297473205123:filters.image-type.0=machine:filters.name.0=goeth-20210614020643:filters.state.0=available:region=us-east-1": "ami-01d514f735a953912"
 }

@@ -17,7 +17,7 @@ ExecStartPre=/usr/local/bin/attach-volume.sh
 ExecStartPre=+/usr/local/bin/format-volume.sh
 ExecStartPre=+/usr/local/bin/mount-volume.sh
 
-ExecStart=/usr/local/bin/lighthouse beacon_node --datadir /var/lib/lighthouse --network pyrmont --staking --eth1-endpoint http://goeth.private.ethereum.everythingbiig.com:8545 --metrics
+ExecStart=/usr/local/bin/lighthouse beacon_node --datadir /var/lib/lighthouse --network pyrmont --staking --eth1 --eth1-endpoints http://goeth.private.ethereum.everythingbiig.com:8545 --metrics
 
 ExecStopPost=-+/usr/local/bin/unmount-volume.sh
 ExecStopPost=-+/usr/local/bin/detach-volume.sh

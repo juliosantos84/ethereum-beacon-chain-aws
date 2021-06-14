@@ -52,7 +52,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("goeth-20210614012218").build());
+        LookupMachineImageProps.builder().name("goeth-20210614020643").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -144,7 +144,7 @@ public class Goeth extends Stack {
                     .protocol(Protocol.TCP)
                     .port(GOETH_RPC_PORT)
                     .loadBalancer(this.privateLoadBalancer)
-                    .build());          
+                    .build());
 
             NetworkListener sshListener = this.privateLoadBalancer.addListener("ssh", 
                 NetworkListenerProps.builder()
