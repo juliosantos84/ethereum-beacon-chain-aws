@@ -190,6 +190,7 @@ public class Lighthouse extends Stack {
 
     private CloudFormationInit getLighthouseCloudInit() {
         return CloudFormationInit.fromElements(
+            InitCommand.shellCommand("sudo apt update"),
             InitCommand.shellCommand("sudo apt install awscli jq -y"),
             InitCommand.shellCommand("echo lighthouse > /home/ubuntu/volume-name-tag"),
             InitCommand.shellCommand("echo /var/lib/lighthouse > /home/ubuntu/volume-mount-path"),

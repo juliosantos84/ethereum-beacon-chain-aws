@@ -55,4 +55,6 @@ Continue following [this](https://someresat.medium.com/guide-to-staking-on-ether
 
 [ ] - Join lighthouse to pyrmont testnet
 
+[ ] - Automate wallet import
+
 [ ] - Externalize instance-specific settings (VPC CIDRs, Domain names, etc)

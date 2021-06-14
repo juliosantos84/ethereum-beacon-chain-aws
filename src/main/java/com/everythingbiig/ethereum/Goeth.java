@@ -54,7 +54,7 @@ public class Goeth extends Stack {
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
         LookupMachineImageProps.builder().name("goeth-20210613235747").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
-    static final Integer    LIGHTHOUSE_PORT             = Integer.valueOf(9000);
+    static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
     static final Integer    SSH_PORT                    = Integer.valueOf(22);
 
@@ -137,7 +137,14 @@ public class Goeth extends Stack {
                     .protocol(Protocol.TCP_UDP)
                     .port(GOETH_PORT)
                     .loadBalancer(this.privateLoadBalancer)
-                    .build());            
+                    .build());
+
+            NetworkListener goethRpcListener = this.privateLoadBalancer.addListener("goethRpc", 
+                NetworkListenerProps.builder()
+                    .protocol(Protocol.TCP)
+                    .port(GOETH_RPC_PORT)
+                    .loadBalancer(this.privateLoadBalancer)
+                    .build());          
 
             NetworkListener sshListener = this.privateLoadBalancer.addListener("ssh", 
                 NetworkListenerProps.builder()
@@ -150,6 +157,14 @@ public class Goeth extends Stack {
                 AddNetworkTargetsProps.builder()
                     .targets(Arrays.asList(this.getGoethBackendAsg()))
                     .port(GOETH_PORT)
+                    .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
+                    .build()
+            );
+
+            NetworkTargetGroup goethRpcTargetGroup = goEthListener.addTargets("goethRpc", 
+                AddNetworkTargetsProps.builder()
+                    .targets(Arrays.asList(this.getGoethBackendAsg()))
+                    .port(GOETH_RPC_PORT)
                     .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
                     .build()
             );
@@ -171,6 +186,7 @@ public class Goeth extends Stack {
                 .vpc(this.goethProps.getAppVpc())
                 .build();
             backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.tcp(GOETH_PORT));
+            backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.tcp(GOETH_RPC_PORT));
             backendAsgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.udp(GOETH_PORT));
             backendAsgSecurityGroup.addIngressRule(this.goethProps.getAdministrationCidr(), Port.tcp(22));
         }
@@ -223,6 +239,7 @@ public class Goeth extends Stack {
 
     protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
+            InitCommand.shellCommand("sudo apt update"),
             InitCommand.shellCommand("sudo apt install awscli jq -y"),
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-name-tag"),
             InitCommand.shellCommand("echo /var/lib/goethereum > /home/ubuntu/volume-mount-path"),
