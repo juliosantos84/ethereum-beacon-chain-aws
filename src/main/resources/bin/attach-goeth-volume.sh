@@ -7,5 +7,4 @@ VOLUME_ID=$(aws ec2 describe-volumes --filters Name=tag:Name,Values=chaindata Na
 echo "Attaching ${VOLUME_ID}..." && aws ec2 attach-volume --device /dev/sdd \
 --instance-id $(curl http://169.254.169.254/latest/meta-data/instance-id) \
 --volume-id ${VOLUME_ID} --region ${REGION} \
-&& echo ${VOLUME_ID} > /home/ubuntu/last-attached-volume-id \
 && sleep 3

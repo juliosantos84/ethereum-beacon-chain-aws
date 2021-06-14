@@ -56,5 +56,7 @@ Continue following [this](https://someresat.medium.com/guide-to-staking-on-ether
 [ ] - Join lighthouse to pyrmont testnet
 
 [ ] - Automate wallet import
-
+```bash
+sudo lighthouse --network pyrmont account validator import --keystore /home/ubuntu/validator_keys/keystore.json --datadir /var/lib/lighthouse
+```
 [ ] - Externalize instance-specific settings (VPC CIDRs, Domain names, etc)

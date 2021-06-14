@@ -106,7 +106,7 @@ public class Goeth extends Stack {
                 .removalPolicy(RemovalPolicy.SNAPSHOT)
                 .availabilityZone(az)
                 .build();
-                Tags.of(vol).add("Name", "chaindata");
+                Tags.of(vol).add("Name", "goeth");
                 this.chaindataVolumes.add(vol);
             }
         }
@@ -161,7 +161,7 @@ public class Goeth extends Stack {
                     .build()
             );
 
-            NetworkTargetGroup goethRpcTargetGroup = goEthListener.addTargets("goethRpc", 
+            NetworkTargetGroup goethRpcTargetGroup = goethRpcListener.addTargets("goethRpc", 
                 AddNetworkTargetsProps.builder()
                     .targets(Arrays.asList(this.getGoethBackendAsg()))
                     .port(GOETH_RPC_PORT)
