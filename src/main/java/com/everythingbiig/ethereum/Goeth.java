@@ -224,10 +224,10 @@ public class Goeth extends Stack {
     protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
             InitCommand.shellCommand("sudo apt install awscli jq -y"),
-            InitCommand.shellCommand("sudo systemctl daemon-reload"),
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-name-tag"),
             InitCommand.shellCommand("echo /var/lib/goethereum > /home/ubuntu/volume-mount-path"),
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-mount-path-owner"),
+            InitCommand.shellCommand("sudo systemctl daemon-reload"),
             // It's possible this command generates an error if the volume is not available
             // That's OK because the service is configured to retry every 30 seconds
             InitCommand.shellCommand("sudo systemctl start geth", 

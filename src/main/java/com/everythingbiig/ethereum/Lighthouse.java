@@ -68,6 +68,8 @@ public class Lighthouse extends Stack {
         this.lighthouseProps = lighthouseProps;
         
         getLighthouseAsg();
+
+        getPrivateLoadBalancer();
     }
 
     protected AutoScalingGroup getLighthouseAsg() {
@@ -188,12 +190,14 @@ public class Lighthouse extends Stack {
 
     private CloudFormationInit getLighthouseCloudInit() {
         return CloudFormationInit.fromElements(
-                InitCommand.shellCommand("echo lighthouse > /home/ubuntu/volume-name-tag"),
-                InitCommand.shellCommand("echo /var/lib/lighthouse > /home/ubuntu/volume-mount-path"),
-                InitCommand.shellCommand("echo lighthousebeacon > /home/ubuntu/volume-mount-path-owner"),
-                InitCommand.shellCommand("sudo systemctl start lighthouse", 
-                    InitCommandOptions.builder()
-                        .ignoreErrors(Boolean.TRUE).build())
+            InitCommand.shellCommand("sudo apt install awscli jq -y"),
+            InitCommand.shellCommand("echo lighthouse > /home/ubuntu/volume-name-tag"),
+            InitCommand.shellCommand("echo /var/lib/lighthouse > /home/ubuntu/volume-mount-path"),
+            InitCommand.shellCommand("echo lighthousebeacon > /home/ubuntu/volume-mount-path-owner"),
+            InitCommand.shellCommand("sudo systemctl daemon-reload"),
+            InitCommand.shellCommand("sudo systemctl start lighthouse", 
+                InitCommandOptions.builder()
+                    .ignoreErrors(Boolean.TRUE).build())
             );
     }
 
