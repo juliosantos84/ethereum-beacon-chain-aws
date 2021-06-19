@@ -46,13 +46,13 @@ public class Networking extends Stack {
     public Networking(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        getDmzVpc();
+        // getDmzVpc();
 
         getAppVpc();
 
         getPrivateHostedZone();
 
-        configureCrossVpcRouting();
+        // configureCrossVpcRouting();
         // getStorageVpc()
     }
 

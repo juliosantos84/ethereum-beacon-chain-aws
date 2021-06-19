@@ -12,6 +12,7 @@ public class EthereumBeaconChainService extends Construct {
     private Administration administration = null;
     private Goeth           goeth = null;
     private Lighthouse      lighthouse = null;
+    private Fargate fargate = null;
 
     public EthereumBeaconChainService(software.constructs.@NotNull Construct scope, @NotNull String id) {
         super(scope, id);
@@ -23,44 +24,58 @@ public class EthereumBeaconChainService extends Construct {
                     .build())
             .build());
 
-        this.administration = new Administration(this, "administration", 
+
+        // this.administration = new Administration(this, "administration", 
+        //     EthereumStackProps.builder()
+        //         .publicHostedZone(this.networking.getPublicHostedZone())
+        //         .privateHostedZone(this.networking.getPrivateHostedZone())
+        //         .build(),
+        //     StackProps.builder()
+        //         .env(Environment.builder()
+        //             .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
+        //             .region(System.getenv("CDK_DEFAULT_REGION"))
+        //             .build())
+        //         .build());
+
+        this.fargate = new Fargate(this, "fargate", 
             EthereumStackProps.builder()
-                .dmzVpc(this.networking.getDmzVpc())
+                .appVpc(this.networking.getAppVpc())
                 .publicHostedZone(this.networking.getPublicHostedZone())
                 .privateHostedZone(this.networking.getPrivateHostedZone())
-                .build(),
-            StackProps.builder()
-                .env(Environment.builder()
-                    .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                    .region(System.getenv("CDK_DEFAULT_REGION"))
-                    .build())
-            .build());
-
-        this.goeth = new Goeth(this, "goeth", 
-            EthereumStackProps.builder()
-                .appVpc(this.networking.getAppVpc())
-                .privateHostedZone(this.networking.getPrivateHostedZone())
-                .administrationPrincipal(this.administration.getAdministrationPrincipal())
-                .administrationCidr(this.administration.getAdministrationCidr())
                 .build(), 
             StackProps.builder()
                 .env(Environment.builder()
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
                     .region(System.getenv("CDK_DEFAULT_REGION"))
                     .build())
-            .build());
+                .build());
 
-        this.lighthouse = new  Lighthouse(this, "lighthouse", 
-            EthereumStackProps.builder()
-                .appVpc(this.networking.getAppVpc())
-                .privateHostedZone(this.networking.getPrivateHostedZone())
-                .administrationCidr(this.administration.getAdministrationCidr())
-                .build(), 
-            StackProps.builder()
-                .env(Environment.builder()
-                        .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                        .region(System.getenv("CDK_DEFAULT_REGION"))
-                        .build())
-            .build());
+        // this.goeth = new Goeth(this, "goeth", 
+        //     EthereumStackProps.builder()
+        //         .appVpc(this.networking.getAppVpc())
+        //         .privateHostedZone(this.networking.getPrivateHostedZone())
+        //         .administrationPrincipal(this.administration.getAdministrationPrincipal())
+        //         .administrationCidr(this.administration.getAdministrationCidr())
+        //         .cluster(this.fargate)
+        //         .build(), 
+        //     StackProps.builder()
+        //         .env(Environment.builder()
+        //             .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
+        //             .region(System.getenv("CDK_DEFAULT_REGION"))
+        //             .build())
+        //     .build());
+
+        // this.lighthouse = new  Lighthouse(this, "lighthouse", 
+        //     EthereumStackProps.builder()
+        //         .appVpc(this.networking.getAppVpc())
+        //         .privateHostedZone(this.networking.getPrivateHostedZone())
+        //         .administrationCidr(this.administration.getAdministrationCidr())
+        //         .build(), 
+        //     StackProps.builder()
+        //         .env(Environment.builder()
+        //                 .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
+        //                 .region(System.getenv("CDK_DEFAULT_REGION"))
+        //                 .build())
+        //     .build());
     }
 }

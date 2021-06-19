@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: eth1
+  name: eth1
+spec:
+  replicas: 1
+  minReadySeconds: 60
+  selector:
+    matchLabels:
+      app: eth1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: eth1
+    spec:
+      containers:
+      - image: ethereum/client-go:stable
+        name: client-go
+        env:
+          - name: NETWORK_FLAG
+            value: "--goerli"
+          - name: HTTP_APIS
+            value: "net,eth"
+          - name: HTTP_VHOSTS
+            value: "*"
+          - name: HTTP_ADDR
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        args:
+          - "$(NETWORK_FLAG)"
+          - "--http.addr"
+          - "$(HTTP_ADDR)"
+          - "--http"
+          - "--http.api"
+          - "$(HTTP_APIS)"
+          - "--http.vhosts"
+          - "$(HTTP_VHOSTS)"
+        ports:
+          - containerPort: 30303
+            name: p2p-tcp
+            protocol: TCP
+          - containerPort: 30303
+            name: p2p-udp
+            protocol: UDP
+          - containerPort: 8545
+            name: rpc-api
+            protocol: TCP
+          - containerPort: 8546
+            name: ws
+            protocol: TCP
+          - containerPort: 8547
+            name: graphql
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "1024Mi"
+          requests:
+            cpu: "500m"
+            memory: "1024Mi"
+      terminationGracePeriodSeconds: 60

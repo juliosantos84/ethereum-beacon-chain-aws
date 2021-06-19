@@ -14,6 +14,8 @@ public class EthereumStackProps {
     private PrivateHostedZone privateHostedZone = null;
     private IPrincipal administrationPrincipal = null;
     private IPeer administrationCidr = null;
+    private Boolean createEksCluster = Boolean.TRUE;
+    private Fargate cluster = null;
     
     static EthereumPropsBuilder builder() {
         return new EthereumPropsBuilder();
@@ -61,6 +63,20 @@ public class EthereumStackProps {
         return Integer.valueOf(22);
     }
     
+    public Boolean createCluster() {
+        return createEksCluster;
+    }
+    public void setCreateCluster(Boolean createEksCluster) {
+        this.createEksCluster = createEksCluster;
+    }
+    
+    public Fargate getCluster() {
+        return cluster;
+    }
+    public void setCluster(Fargate cluster) {
+        this.cluster = cluster;
+    }
+
     public static final class EthereumPropsBuilder {
         private Vpc dmzVpc = null;
         private Vpc appVpc = null;
@@ -68,6 +84,8 @@ public class EthereumStackProps {
         private PrivateHostedZone privateHostedZone = null;
         private IPrincipal administrationPrincipal = null;
         private IPeer administrationCidr = null;
+        private Boolean createCluster = null;
+        private Fargate cluster = null;
 
         public EthereumPropsBuilder dmzVpc(Vpc dmzVpc) {
             this.dmzVpc = dmzVpc;
@@ -99,8 +117,18 @@ public class EthereumStackProps {
             return this;
         }
 
+        public EthereumPropsBuilder createCluster(Boolean createCluster) {
+            this.createCluster = createCluster;
+            return this;
+        }
+
+        public EthereumPropsBuilder cluster(Fargate cluster) {
+            this.cluster = cluster;
+            return this;
+        }
+
         public Vpc getDmzVpc() {
-            return dmzVpc;
+            return this.dmzVpc;
         }
 
         public Vpc getAppVpc() {
@@ -122,10 +150,12 @@ public class EthereumStackProps {
         public IPrincipal getAdministrationPrincipal() {
             return administrationPrincipal;
         }
-        public void setAdministrationPrincipal(IPrincipal administrationPrincipal) {
-            this.administrationPrincipal = administrationPrincipal;
+        public Boolean createCluster() {
+            return this.createCluster;
         }
-
+        public Fargate getCluster() {
+            return this.cluster;
+        }
         public EthereumStackProps build() {
             EthereumStackProps props = new EthereumStackProps();
             props.setDmzVpc(this.getDmzVpc());
@@ -134,6 +164,8 @@ public class EthereumStackProps {
             props.setPrivateHostedZone(this.getPrivateHostedZone());
             props.setAdministrationPrincipal(this.getAdministrationPrincipal());
             props.setAdministrationCidr(this.getAdministrationCidr());
+            props.setCreateCluster(this.createCluster());
+            props.setCluster(this.getCluster());
             return props;
         }
 

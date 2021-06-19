@@ -81,16 +81,16 @@ public class Goeth extends Stack {
     public Goeth(final Construct scope, final String id, final EthereumStackProps goethProps, final StackProps props) {
         super(scope, id, props);
 
-        this.goethProps = goethProps;  
+        this.goethProps = goethProps;
 
         // Configure a persistent volume for chain data
-        getChaindataVolumes();
+        // getChaindataVolumes();
 
         // Autoscaling group for ETH backend
-        getGoethBackendAsg();
+        // getGoethBackendAsg();
         
         // Configure a load balancer and ec2 ASG
-        getPrivateLoadBalancer();
+        // getPrivateLoadBalancer();
     }
 
     protected List<IVolume> getChaindataVolumes() {
