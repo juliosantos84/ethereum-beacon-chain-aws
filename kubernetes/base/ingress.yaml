@@ -1,0 +1,14 @@
+---
+kind: IngressRoute
+apiVersion: traefik.containo.us/v1alpha1
+metadata:
+  name: eth1
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: Host(`goeth.private.ethereum.everythingbiig.com`) && PathPrefix(`/`)
+    kind: Rule
+    services:
+    - name: eth1
+      port: 8545
