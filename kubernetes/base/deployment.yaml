@@ -27,7 +27,7 @@ spec:
           - name: NETWORK_FLAG
             value: "--goerli"
           - name: HTTP_APIS
-            value: "net,eth"
+            value: "net,eth,web3"
           - name: HTTP_VHOSTS
             value: "*"
           - name: HTTP_ADDR

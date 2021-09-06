@@ -1,5 +1,22 @@
 resources:
-  - resources.yaml
-bases:
-  - ../base
+  - ./../base
 namePrefix: prod-
+
+patchesStrategicMerge:
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: eth1
+  spec:
+    template:
+      spec:
+        containers:
+        - name: client-go
+          resources:
+            limits:
+              cpu: "2000m"
+              memory: "4096Mi"
+            requests:
+              cpu: "2000m"
+              memory: "4096Mi"

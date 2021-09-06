@@ -1,15 +1,28 @@
 # kubernetes
 
-# cluster creation
+# local dev
+## cluster creation
 
 ```bash
-kubectl cluster create development
+k3d cluster create development
 ```
+
+## kubeconfig
+
+```bash
+ k3d config merge local-dev -o /Users/julio/.kube/k3d-local.yaml
+ ```
 
 # deploying
 
 ```bash
 kustomize build kubernetes/base | kubectl apply -f -
+```
+
+# destroying
+
+```bash
+kustomize build kubernetes/base | kubectl delete -f -
 ```
 
 # port-forwarding
