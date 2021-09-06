@@ -5,9 +5,9 @@ metadata:
   name: eth1
 spec:
   entryPoints:
-    - web
+    - eth1rpc
   routes:
-  - match: Host(`goeth.private.ethereum.everythingbiig.com`) && PathPrefix(`/`)
+  - match: PathPrefix(`/`)
     kind: Rule
     services:
     - name: eth1

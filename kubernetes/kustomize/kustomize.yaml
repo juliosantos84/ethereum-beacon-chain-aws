@@ -1,3 +1,4 @@
 resources:
+- ./development
 - ./production
 namePrefix: ebc

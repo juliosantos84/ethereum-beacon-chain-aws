@@ -1,7 +1,6 @@
 resources:
   - ./../base
-namePrefix: prod-
-
+# namePrefix: prod-
 patchesStrategicMerge:
 - |-
   apiVersion: apps/v1
