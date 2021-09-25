@@ -1,7 +1,11 @@
 #! /bin/bash
 
+set -e
+
+set -x
+
 SOURCE_ROOT="ami"
-SOURCE_FILES="geth.pkr.hcl lighthouse.pkr.hcl"
+SOURCE_FILES="goeth.pkr.hcl lighthouse.pkr.hcl"
 
 for SOURCE_FILE in $SOURCE_FILES; do
 
