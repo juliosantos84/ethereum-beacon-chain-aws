@@ -20,3 +20,13 @@ spec:
         # Added in 2.2, you can make permanent redirects via entrypoints.
         # https://docs.traefik.io/routing/entrypoints/#redirection
         # redirectTo: websecure
+      eth1p2ptcp:
+        port: 30303
+        expose: true
+        exposedPort: 30303
+        protocol: TCP
+      eth1p2pudp:
+        port: 30303
+        expose: true
+        exposedPort: 30303
+        protocol: TCP
