@@ -22,7 +22,7 @@ ExecStartPre=/usr/local/bin/attach-goeth-volume.sh
 ExecStartPre=+/usr/local/bin/format-goeth-volume.sh
 ExecStartPre=+/usr/local/bin/mount-goeth-volume.sh
 
-ExecStart=geth --goerli --http --http.addr "${GETH_HTTP_ADDR:-localhost}" --http.api net,eth,web3 --http.vhosts * --datadir /var/lib/goethereum
+ExecStart=geth --goerli --http --http.addr 0.0.0.0 --http.api net,eth,web3 --http.vhosts * --datadir /var/lib/goethereum
 
 ExecStopPost=-+/usr/local/bin/unmount-goeth-volume.sh
 ExecStopPost=-+/usr/local/bin/detach-goeth-volume.sh
