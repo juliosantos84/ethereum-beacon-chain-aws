@@ -4,8 +4,6 @@ set -e
 
 set -x
 
-HTTP_ADDR=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
-
 cat <<UNIT >> ./geth.service
 [Unit]
 Description=Ethereum go client
@@ -19,11 +17,12 @@ Type=simple
 Restart=always
 RestartSec=30
 
+EnvironmentFile=-/etc/systemd/system/geth.service.env
 ExecStartPre=/usr/local/bin/attach-goeth-volume.sh
 ExecStartPre=+/usr/local/bin/format-goeth-volume.sh
 ExecStartPre=+/usr/local/bin/mount-goeth-volume.sh
 
-ExecStart=geth --goerli --http --http.addr ${HTTP_ADDR} --http.api net,eth,web3 --http.vhosts * --datadir /var/lib/goethereum
+ExecStart=geth --goerli --http --http.addr "${GETH_HTTP_ADDR:-localhost}" --http.api net,eth,web3 --http.vhosts * --datadir /var/lib/goethereum
 
 ExecStopPost=-+/usr/local/bin/unmount-goeth-volume.sh
 ExecStopPost=-+/usr/local/bin/detach-goeth-volume.sh

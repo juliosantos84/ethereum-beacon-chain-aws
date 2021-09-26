@@ -51,7 +51,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("goeth-20210925135623").build());
+        LookupMachineImageProps.builder().name("goeth-20210926140129").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -197,7 +197,7 @@ public class Goeth extends Stack {
             this.goethAsg = AutoScalingGroup.Builder.create(this, "goeth")
                 .vpc(this.goethProps.getAppVpc())
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
                 .machineImage(GOETH_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
@@ -244,6 +244,7 @@ public class Goeth extends Stack {
             InitCommand.shellCommand("echo /var/lib/goethereum > /home/ubuntu/volume-mount-path"),
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-mount-path-owner"),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
+            InitCommand.shellCommand("echo GETH_HTTP_ADDR=$(curl http://169.254.169.254/latest/meta-data/local-ipv4) >> /etc/systemd/system/geth.service.env"),
             // It's possible this command generates an error if the volume is not available
             // That's OK because the service is configured to retry every 30 seconds
             InitCommand.shellCommand("sudo systemctl start geth", 

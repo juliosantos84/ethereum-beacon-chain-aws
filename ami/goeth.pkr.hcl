@@ -60,11 +60,6 @@ build {
   }
 
   provisioner "file" {
-    source = "src/main/resources/units/geth.service"
-    destination = "/tmp/units/"
-  }
-
-  provisioner "file" {
     sources = [
       "src/main/resources/bin/attach-goeth-volume.sh",
       "src/main/resources/bin/detach-goeth-volume.sh",
