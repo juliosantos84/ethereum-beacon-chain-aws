@@ -6,7 +6,6 @@ import java.util.List;
 
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
-import software.amazon.awscdk.core.RemovalPolicy;
 import software.amazon.awscdk.core.Size;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
@@ -48,7 +47,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Lighthouse extends Stack {
     public static final IMachineImage LIGHTHOUSE_AMI = MachineImage.lookup(
         LookupMachineImageProps.builder()
-            .name("lighthouse-20210613201350").build());
+            .name("lighthouse-20210925134835").build());
     private AutoScalingGroup lighthouseAsg = null;
     private SecurityGroup lighthouseSecurityGroup = null;
     private List<IVolume> lighthouseVolumes        = null;
@@ -177,7 +176,7 @@ public class Lighthouse extends Stack {
                 .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
                 .size(LIGHTHOUSE_VOLUME_SIZE)
                 .encrypted(Boolean.TRUE)
-                .removalPolicy(RemovalPolicy.SNAPSHOT)
+                // .removalPolicy(RemovalPolicy.SNAPSHOT)
                 .availabilityZone(az)
                 .build();
                 Tags.of(vol).add("Name", "lighthouse");

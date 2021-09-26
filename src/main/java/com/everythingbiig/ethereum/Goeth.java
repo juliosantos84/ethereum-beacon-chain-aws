@@ -6,7 +6,6 @@ import java.util.List;
 
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
-import software.amazon.awscdk.core.RemovalPolicy;
 import software.amazon.awscdk.core.Size;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
@@ -52,7 +51,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("goeth-20210614020643").build());
+        LookupMachineImageProps.builder().name("goeth-20210925135623").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -84,13 +83,13 @@ public class Goeth extends Stack {
         this.goethProps = goethProps;
 
         // Configure a persistent volume for chain data
-        // getChaindataVolumes();
+        getChaindataVolumes();
 
         // Autoscaling group for ETH backend
-        // getGoethBackendAsg();
+        getGoethBackendAsg();
         
         // Configure a load balancer and ec2 ASG
-        // getPrivateLoadBalancer();
+        getPrivateLoadBalancer();
     }
 
     protected List<IVolume> getChaindataVolumes() {
@@ -103,7 +102,7 @@ public class Goeth extends Stack {
                 .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
                 .size(ETH_DATA_VOLUME_SIZE)
                 .encrypted(Boolean.TRUE)
-                .removalPolicy(RemovalPolicy.SNAPSHOT)
+                // .removalPolicy(RemovalPolicy.SNAPSHOT)
                 .availabilityZone(az)
                 .build();
                 Tags.of(vol).add("Name", "goeth");
