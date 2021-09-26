@@ -47,7 +47,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Lighthouse extends Stack {
     public static final IMachineImage LIGHTHOUSE_AMI = MachineImage.lookup(
         LookupMachineImageProps.builder()
-            .name("lighthouse-20210925134835").build());
+            .name("lighthouse-20210926140521").build());
     private AutoScalingGroup lighthouseAsg = null;
     private SecurityGroup lighthouseSecurityGroup = null;
     private List<IVolume> lighthouseVolumes        = null;
