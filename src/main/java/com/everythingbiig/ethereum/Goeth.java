@@ -59,12 +59,11 @@ public class Goeth extends Stack {
 
     static final String     VPC_CIDR                    = "10.1.0.0/16";
     static final Integer    MIN_GETH_INSTANCES          = Integer.valueOf(0);
-    static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(1);
+    static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(2);
 
     static final IPeer      VPC_CIDR_PEER               = Peer.ipv4(VPC_CIDR);
-    static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(1000));
+    static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(150));
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
-
 
     private NetworkLoadBalancer privateLoadBalancer                        = null;
     private SecurityGroup       backendAsgSecurityGroup         = null;
@@ -197,7 +196,7 @@ public class Goeth extends Stack {
             this.goethAsg = AutoScalingGroup.Builder.create(this, "goeth")
                 .vpc(this.goethProps.getAppVpc())
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
                 .machineImage(GOETH_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
@@ -222,14 +221,16 @@ public class Goeth extends Stack {
                     .resources(Arrays.asList("*"))
                     .build());
 
-            // Grant the backendAsg access to attacht he volume
-            for(IVolume vol : this.getChaindataVolumes()) {
-                vol.grantAttachVolumeByResourceTag(
-                    this.goethAsg.getGrantPrincipal(), 
-                    Arrays.asList(this.goethAsg));
-                vol.grantDetachVolumeByResourceTag(
-                    this.goethAsg.getGrantPrincipal(), 
-                    Arrays.asList(this.goethAsg));
+            // Grant the backendAsg access to attach the volume
+            if(this.chaindataVolumes != null) {
+                for(IVolume vol : this.getChaindataVolumes()) {
+                    vol.grantAttachVolumeByResourceTag(
+                        this.goethAsg.getGrantPrincipal(), 
+                        Arrays.asList(this.goethAsg));
+                    vol.grantDetachVolumeByResourceTag(
+                        this.goethAsg.getGrantPrincipal(), 
+                        Arrays.asList(this.goethAsg));
+                }
             }
         }
 
