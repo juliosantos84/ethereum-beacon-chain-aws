@@ -1,5 +1,11 @@
 #! /bin/bash
 
+set -x
+
+set -e
+
+echo "Installing lighthouse.service..."
+
 cat <<UNIT >> ./lighthouse.service
 [Unit]
 Description=Lighthouse Beacon Node Service
@@ -27,3 +33,23 @@ WantedBy=multi-user.target
 UNIT
 
 sudo mv ./lighthouse.service /etc/systemd/system/lighthouse.service
+
+echo "Installing lighthousevalidator.service..."
+
+cat <<UNIT >> ./lighthousevalidator.service
+[Unit]
+Description=Lighthouse Validator
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=simple
+User=lighthousevalidator
+Group=lighthousevalidator
+Restart=always
+RestartSec=5
+ExecStart=/usr/local/bin/lighthouse validator_client --network pyrmont --datadir /var/lib/lighthouse --graffiti "everythingbiigpyrmont"
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+sudo mv ./lighthousevalidator.service /etc/systemd/system/lighthousevalidator.service
