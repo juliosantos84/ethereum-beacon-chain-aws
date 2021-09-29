@@ -56,7 +56,7 @@ public class Lighthouse extends Stack {
     
     static final Integer LIGHTHOUSE_PORT = Integer.valueOf(9000);
 
-    static final Size       LIGHTHOUSE_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(200));
+    static final Size       LIGHTHOUSE_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(1000));
 
     public Lighthouse(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -76,7 +76,7 @@ public class Lighthouse extends Stack {
             this.lighthouseAsg = AutoScalingGroup.Builder.create(this, "lighthouseAsg")
                 .vpc(this.lighthouseProps.getAppVpc())
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MEDIUM))
+                .instanceType(InstanceType.of(InstanceClass.COMPUTE5_AMD, InstanceSize.LARGE))
                 .machineImage(LIGHTHOUSE_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
