@@ -35,6 +35,9 @@ target
 cdk.out
 cdk.context.json
 
+# Packer
 packer_cache
 
+# Junk
 tmp/
+.DS_Store
