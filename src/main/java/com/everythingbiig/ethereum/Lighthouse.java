@@ -76,7 +76,7 @@ public class Lighthouse extends Stack {
             this.lighthouseAsg = AutoScalingGroup.Builder.create(this, "lighthouseAsg")
                 .vpc(this.lighthouseProps.getAppVpc())
                 .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
-                .instanceType(InstanceType.of(InstanceClass.COMPUTE5_AMD, InstanceSize.LARGE))
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
                 .machineImage(LIGHTHOUSE_AMI)
                 .keyName("eth-stack")
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
