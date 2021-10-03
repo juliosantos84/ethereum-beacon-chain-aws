@@ -1,6 +1,5 @@
 resources:
   - ./../base
-# namePrefix: prod-
 patchesStrategicMerge:
 - |-
   apiVersion: apps/v1
@@ -11,7 +10,7 @@ patchesStrategicMerge:
     template:
       spec:
         containers:
-        - name: client-go
+        - name: goeth
           resources:
             limits:
               cpu: "2000m"
@@ -19,3 +18,13 @@ patchesStrategicMerge:
             requests:
               cpu: "2000m"
               memory: "4096Mi"
+- |-
+  apiVersion: storage.k8s.io/v1
+  kind: StorageClass
+  metadata:
+    name: default-storage
+  provisioner: kubernetes.io/aws-ebs
+  parameters:
+    type: gp3
+    iopsPerGB: "10"
+    fsType: ext4

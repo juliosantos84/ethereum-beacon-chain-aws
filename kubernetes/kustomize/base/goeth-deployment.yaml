@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - image: ethereum/client-go:stable
-        name: client-go
+        name: goeth
         env:
           - name: NETWORK_FLAG
             value: "--goerli"
@@ -31,9 +31,7 @@ spec:
           - name: HTTP_VHOSTS
             value: "*"
           - name: HTTP_ADDR
-            valueFrom:
-              fieldRef:
-                fieldPath: status.podIP
+            value: "0.0.0.0"
         args:
           - "$(NETWORK_FLAG)"
           - "--http.addr"

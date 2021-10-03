@@ -1,4 +1,5 @@
 resources:
-  - deployment.yaml
-  - service.yaml
-  - ingress.yaml
+  - goeth-deployment.yaml
+  - goeth-service.yaml
+  - storageclass.yaml
+  # - ingress.yaml
