@@ -14,21 +14,32 @@ This deployment is based on [this](https://someresat.medium.com/guide-to-staking
 - Scripted volume attachment/detachment to avoid loss of data
 
 ## Deployments
-Set the env vars and run the deploy script:
+### Requirements
+1. You've bootstrapped your target environment using `cdk bootstrap`
+2. You've built the AMIs using `bin/build-images.sh`
+3. You've configured a .env file using `env/default.env` as a template and set the `CDK_ENV` to its path:
 
+### Deploying
 ```bash
-export BASTION_ALLOWED_CIDR=1.1.1.1/32
-bin/deploy-stacks.sh
+# roll the dice and see if all three work in one shot! good luck!
+cdk bootstrap \
+&& bin/build-images.sh \
+&& CDK_ENV=~/default.env bin/deploy-stacks.sh
 ```
-or deploy a specific stack:
 
+To deploy individual stacks:
 ```bash
-BASTION_ALLOWED_CIDR=1.1.1.1/32 cdk deploy ethereumBeaconChainService/administration --require-approval never
+CDK_ENV=~/default.env \
+&& env/set-env.sh \
+&& cdk deploy ethereumBeaconChainService/administration --require-approval never
 ```
 
-### After deploying
-- Ensure the current state is in source control.
-
+After deploying, scale up the ASGs.  You can run 
+```bash
+export ASG_NAME=<your asg name> 
+export ASG_DESIRED_CAPACITY=1 
+bin/set-desired-capacity.sh
+```
 ## Todo
 
 [X] - Create VPC network
