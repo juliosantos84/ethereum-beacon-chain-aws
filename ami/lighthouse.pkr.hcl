@@ -76,7 +76,8 @@ build {
       "ami/scripts/provisioner/lighthouse/create-users.sh",
       "ami/scripts/provisioner/lighthouse/install-binaries.sh",
       "ami/scripts/provisioner/lighthouse/install-scripts.sh",
-      "ami/scripts/provisioner/lighthouse/install-service.sh"
+      "ami/scripts/provisioner/lighthouse/install-service.sh",
+      "ami/scripts/provisioner/prometheus/install-prometheus.sh"
     ]
   }
 }
