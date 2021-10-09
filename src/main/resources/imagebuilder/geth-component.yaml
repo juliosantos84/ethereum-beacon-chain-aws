@@ -1,0 +1,28 @@
+name: GethNodeProvisioner
+description: Provisions a geth node.
+schemaVersion: 1.0
+phases:
+  - name: 'build'
+    steps:
+      - name: CreateUsers
+        action: ExecuteBash
+        onFailure: Abort
+        timeoutSeconds: 30
+        maxAttempts: 1
+        inputs:
+          commands:
+            - sudo useradd --no-create-home --shell /bin/false goeth
+      - name: InstallBinaries
+        action: ExecuteBash
+        onFailure: Abort
+        timeoutSeconds: 30
+        maxAttempts: 1
+        inputs:
+          commands:
+          - |
+            GETH_VERSION=1.10.8-26675454
+            BINARY_NAME=geth-linux-amd64-$GETH_VERSION
+            ARCHIVE_NAME=$BINARY_NAME.tar.gz
+            curl -L https://gethstore.blob.core.windows.net/builds/$ARCHIVE_NAME --output /tmp/$ARCHIVE_NAME
+            sudo tar -xvf /tmp/$ARCHIVE_NAME
+            sudo mv ./$BINARY_NAME/geth /usr/local/bin/geth

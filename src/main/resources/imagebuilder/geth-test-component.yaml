@@ -1,0 +1,16 @@
+name: GethNodeProvisionerTest
+description: Tests provisioning of a geth node.
+schemaVersion: 1.0
+phases:
+    - name: 'test'
+      steps:
+        - name: ValidateGeth
+          action: ExecuteBash
+          onFailure: Abort
+          timeoutSeconds: 30
+          maxAttempts: 1
+          inputs:
+            commands:
+              - 'id -u goeth && echo "goeth user is installed"'
+              - '[ -f /usr/local/bin/geth ] && echo "Geth is installed"'
+              - 'geth version | grep Version | grep 1.10.8-stable'
