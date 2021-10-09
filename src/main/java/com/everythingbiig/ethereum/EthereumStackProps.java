@@ -10,6 +10,7 @@ import software.amazon.awscdk.services.route53.PublicHostedZone;
 public class EthereumStackProps {
     private Vpc appVpc = null;
     private Vpc dmzVpc = null;
+    private Vpc devVpc = null;
     private PublicHostedZone publicHostedZone = null;
     private PrivateHostedZone privateHostedZone = null;
     private IPrincipal administrationPrincipal = null;
@@ -31,6 +32,12 @@ public class EthereumStackProps {
     }
     public void setAppVpc(Vpc appVpc) {
         this.appVpc = appVpc;
+    }
+    public Vpc getDevVpc() {
+        return devVpc;
+    }
+    public void setDevVpc(Vpc devVpc) {
+        this.devVpc = devVpc;
     }
     public PublicHostedZone getPublicHostedZone() {
         return publicHostedZone;
@@ -80,6 +87,7 @@ public class EthereumStackProps {
     public static final class EthereumPropsBuilder {
         private Vpc dmzVpc = null;
         private Vpc appVpc = null;
+        private Vpc devVpc = null;
         private PublicHostedZone publicHostedZone = null;
         private PrivateHostedZone privateHostedZone = null;
         private IPrincipal administrationPrincipal = null;
@@ -94,6 +102,10 @@ public class EthereumStackProps {
 
         public EthereumPropsBuilder appVpc(Vpc appVpc) {
             this.appVpc = appVpc;
+            return this;
+        }
+        public EthereumPropsBuilder devVpc(Vpc devVpc) {
+            this.devVpc = devVpc;
             return this;
         }
 
@@ -135,6 +147,10 @@ public class EthereumStackProps {
             return this.appVpc;
         }
 
+        public Vpc getDevVpc() {
+            return devVpc;
+        }
+
         public PublicHostedZone getPublicHostedZone() {
             return this.publicHostedZone;
         }
@@ -160,6 +176,7 @@ public class EthereumStackProps {
             EthereumStackProps props = new EthereumStackProps();
             props.setDmzVpc(this.getDmzVpc());
             props.setAppVpc(this.getAppVpc());
+            props.setDevVpc(this.getDevVpc());
             props.setPublicHostedZone(this.getPublicHostedZone());
             props.setPrivateHostedZone(this.getPrivateHostedZone());
             props.setAdministrationPrincipal(this.getAdministrationPrincipal());

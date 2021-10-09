@@ -31,7 +31,7 @@ To deploy individual stacks:
 ```bash
 CDK_ENV=~/default.env \
 && env/set-env.sh \
-&& cdk deploy ethereumBeaconChainService/administration --require-approval never
+&& cdk deploy ethereumBeaconChainService/development --require-approval never
 ```
 
 After deploying, scale up the ASGs.  You can run 

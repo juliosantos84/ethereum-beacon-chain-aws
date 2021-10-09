@@ -32,8 +32,8 @@ public class Networking extends Stack {
     // Apps and Services
     private Vpc appVpc = null;
 
-    // Storage
-    private Vpc storageVpc = null;
+    // Development
+    private Vpc devVpc = null;
 
     // Private DNS internal.ethereum.everythingbiig.com
     private PrivateHostedZone privateHostedZone = null;
@@ -53,7 +53,8 @@ public class Networking extends Stack {
         getPrivateHostedZone();
 
         configureCrossVpcRouting();
-        // getStorageVpc()
+
+        getDevVpc();
     }
 
     private void configureCrossVpcRouting() {
@@ -116,18 +117,23 @@ public class Networking extends Stack {
         return this.appVpc;
     }
 
-    public Vpc getStoragVpc() {
-        if(this.storageVpc == null) {
+    public Vpc getDevVpc() {
+        if(this.devVpc == null) {
             // 1024 hosts
-            this.storageVpc = Vpc.Builder.create(this, "storageVpc")
-            .cidr("10.1.8.0/22")
-            .subnetConfiguration(
-                Arrays.asList(
-                    SubnetConfiguration.builder().subnetType(SubnetType.PRIVATE).build()))
-            .maxAzs(Integer.valueOf(AZ_COUNT))
-            .build();
+            this.devVpc = Vpc.Builder.create(this, "devVpc")
+                .cidr("10.1.8.0/22")
+                .subnetConfiguration(
+                    Arrays.asList(
+                        SubnetConfiguration.builder()
+                            .name("publicDevSubnet")
+                            .subnetType(SubnetType.PUBLIC).build(),
+                        SubnetConfiguration.builder()
+                            .name("privateDevSubnet")
+                            .subnetType(SubnetType.PRIVATE).build()))
+                .maxAzs(Integer.valueOf(1))
+                .build();
         }
-        return this.storageVpc;
+        return this.devVpc;
     }
 
     public PrivateHostedZone getPrivateHostedZone() {
