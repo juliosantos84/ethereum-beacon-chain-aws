@@ -24,13 +24,13 @@ This deployment is based on [this](https://someresat.medium.com/guide-to-staking
 # roll the dice and see if all three work in one shot! good luck!
 cdk bootstrap \
 && bin/build-images.sh \
-&& CDK_ENV=~/default.env bin/deploy-stacks.sh
+&& source ~/default.env \
+&& bin/deploy-stacks.sh
 ```
 
 To deploy individual stacks:
 ```bash
-CDK_ENV=~/default.env \
-&& env/set-env.sh \
+source ~/default.env \
 && cdk deploy ethereumBeaconChainService/development --require-approval never
 ```
 
