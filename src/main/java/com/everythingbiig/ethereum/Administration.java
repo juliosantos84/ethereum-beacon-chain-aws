@@ -7,11 +7,13 @@ import software.amazon.awscdk.core.Duration;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
 import software.amazon.awscdk.services.ec2.BastionHostLinux;
+import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.ISecurityGroup;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
+import software.amazon.awscdk.services.ec2.LookupMachineImageProps;
 import software.amazon.awscdk.services.ec2.MachineImage;
 import software.amazon.awscdk.services.ec2.Peer;
 import software.amazon.awscdk.services.ec2.Port;
@@ -39,42 +41,55 @@ public class Administration extends Stack {
         
         this.adminProps = adminProps;
 
-        this.bastion = BastionHostLinux.Builder.create(this, id)
-            .vpc(this.adminProps.getDmzVpc())
-            .subnetSelection(SubnetSelection.builder()
-                .subnetType(SubnetType.PUBLIC)
-                .build())
-            .instanceName("Bastion")
-            .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MICRO))
-            .machineImage(MachineImage.latestAmazonLinux())
-            .securityGroup(getBastionSecurityGroup())
-            .build();
+        getBastion(id);
+    }
 
-        if(this.adminProps.getPublicHostedZone() != null) {
-            ARecord.Builder.create(this, "bastionPublicARecord")
-                .zone(this.adminProps.getPublicHostedZone())
-                .target(RecordTarget.fromIpAddresses(this.bastion.getInstancePublicIp()))
-                .recordName("bastion.public.ethereum.everythingbiig.com")
-                .ttl(Duration.minutes(1))
+    private void getBastion(String id) {
+        if(this.bastion == null) {
+            this.bastion = BastionHostLinux.Builder.create(this, id)
+                .vpc(this.adminProps.getDmzVpc())
+                .subnetSelection(SubnetSelection.builder()
+                    .subnetType(SubnetType.PUBLIC)
+                    .build())
+                .instanceName("Bastion")
+                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.MICRO))
+                .machineImage(getMachineImage())
+                .securityGroup(getBastionSecurityGroup())
                 .build();
+
+            if(this.adminProps.getPublicHostedZone() != null) {
+                ARecord.Builder.create(this, "bastionPublicARecord")
+                    .zone(this.adminProps.getPublicHostedZone())
+                    .target(RecordTarget.fromIpAddresses(this.bastion.getInstancePublicIp()))
+                    .recordName("bastion.public.ethereum.everythingbiig.com")
+                    .ttl(Duration.minutes(1))
+                    .build();
+            }
+
+            this.adminProps.getPrivateHostedZone().addVpc(this.adminProps.getDmzVpc());
+
+            this.bastion.getGrantPrincipal()
+                .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                    .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
+                    .effect(Effect.ALLOW)
+                    .resources(Arrays.asList(
+                        "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
+                    .build());
+            this.bastion.getGrantPrincipal()
+                .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                    .actions(Arrays.asList("ssm:StartSession"))
+                    .effect(Effect.ALLOW)
+                    .resources(Arrays.asList(
+                        "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
+                    .build());
         }
+    }
 
-        this.adminProps.getPrivateHostedZone().addVpc(this.adminProps.getDmzVpc());
-
-        this.bastion.getGrantPrincipal()
-            .addToPrincipalPolicy(PolicyStatement.Builder.create()
-                .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
-                .effect(Effect.ALLOW)
-                .resources(Arrays.asList(
-                    "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
-                .build());
-        this.bastion.getGrantPrincipal()
-            .addToPrincipalPolicy(PolicyStatement.Builder.create()
-                .actions(Arrays.asList("ssm:StartSession"))
-                .effect(Effect.ALLOW)
-                .resources(Arrays.asList(
-                    "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
-                .build());
+    private IMachineImage getMachineImage() {
+        return MachineImage.lookup(
+            LookupMachineImageProps.builder()
+                .owners(Arrays.asList("amazon"))
+                .name("amzn-ami-hvm-2018.03.0.20210721.0-x86_64-gp2").build());
     }
 
     private String getBastionAllowedCidr() {
