@@ -45,18 +45,17 @@ import software.amazon.awscdk.services.route53.RecordTarget;
 import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 
 public class Lighthouse extends Stack {
-    public static final IMachineImage LIGHTHOUSE_AMI = MachineImage.lookup(
-        LookupMachineImageProps.builder()
-            .name("lighthouse-20210929012255").build());
+    public static final IMachineImage LIGHTHOUSE_AMI = MachineImage
+            .lookup(LookupMachineImageProps.builder().name("etherythingbiig-5-2021-10-22T23-43-53.960Z").build());
     private AutoScalingGroup lighthouseAsg = null;
     private SecurityGroup lighthouseSecurityGroup = null;
-    private List<IVolume> lighthouseVolumes        = null;
+    private List<IVolume> lighthouseVolumes = null;
     private NetworkLoadBalancer privateLoadBalancer = null;
     private EthereumStackProps lighthouseProps = null;
-    
+
     static final Integer LIGHTHOUSE_PORT = Integer.valueOf(9000);
 
-    static final Size       LIGHTHOUSE_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(1000));
+    static final Size LIGHTHOUSE_VOLUME_SIZE = Size.gibibytes(Integer.valueOf(1000));
 
     public Lighthouse(final Construct scope, final String id) {
         this(scope, id, null, null);
