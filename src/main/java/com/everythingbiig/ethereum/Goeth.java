@@ -51,7 +51,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("etherythingbiig-5-2021-10-22T23-43-53.960Z").build());
+        LookupMachineImageProps.builder().name("etherythingbiig-10-2021-10-25T00-05-41.834Z").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -59,7 +59,7 @@ public class Goeth extends Stack {
 
     static final String     VPC_CIDR                    = "10.1.0.0/16";
     static final Integer    MIN_GETH_INSTANCES          = Integer.valueOf(0);
-    static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(2);
+    static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(1);
 
     static final IPeer      VPC_CIDR_PEER               = Peer.ipv4(VPC_CIDR);
     static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(150));
@@ -246,15 +246,18 @@ public class Goeth extends Stack {
 
     protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
-            InitCommand.shellCommand("sudo apt update"),
-            InitCommand.shellCommand("sudo apt install awscli jq -y"),
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-name-tag"),
-            InitCommand.shellCommand("echo /var/lib/goethereum > /home/ubuntu/volume-mount-path"),
-            InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-mount-path-owner"),
+            InitCommand.shellCommand("echo /var/lib/chaindata > /home/ubuntu/volume-mount-path"),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
             // It's possible this command generates an error if the volume is not available
             // That's OK because the service is configured to retry every 30 seconds
             InitCommand.shellCommand("sudo systemctl start geth", 
+                InitCommandOptions.builder()
+                    .ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl start lighthousebeacon", 
+                InitCommandOptions.builder()
+                    .ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl start lighthousevalidator", 
                 InitCommandOptions.builder()
                     .ignoreErrors(Boolean.TRUE).build()));
     }

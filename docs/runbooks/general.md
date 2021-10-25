@@ -2,22 +2,22 @@
 
 # create a volume
 ```bash
-AZ=us-east-1b
-SNAPSHOT="--snapshot-id snap-0fec8f43985a9f20d"
+AZ=us-east-1a
+SNAPSHOT="--snapshot-id snap-001799f517b01f531"
 aws ec2 create-volume ${SNAPSHOT} \
 --availability-zone ${AZ} \
 --encrypted \
 --iops 125 \
 --size 150 \
 --volume-type gp3 \
---tag-specification "ResourceType=volume,Tags=[{Key=Name,Value=backup-volume-${AZ}}]"
+--tag-specification "ResourceType=volume,Tags=[{Key=Name,Value=goeth-lighthouse-data-${AZ}}]"
 ```
 
 # attach a volume to an instance
 
 ```bash
-INSTANCE_ID=i-096c216fb1713908b
-VOLUME_ID=vol-034f00222d40b0de7
+INSTANCE_ID=i-061f2a6501545278c
+VOLUME_ID=vol-0eae931e7fd7b40ce
 aws ec2 attach-volume --device /dev/sdf --instance-id ${INSTANCE_ID} --volume-id ${VOLUME_ID}
  ```
 
@@ -43,8 +43,8 @@ sudo mkdir -p ${MOUNT_PATH} && sudo mount ${DEVICE_PATH} ${MOUNT_PATH}
 
 ## lighthouse
 ```
-SOURCE_DIR=/var/lib/lighthouse/beacon
-DEST_DIR=/var/lib/backup/lighthouse
+SOURCE_DIR=/var/lib/backup/beacon
+DEST_DIR=/var/lib/chaindata/lighthouse
 sudo mkdir -p ${DEST_DIR}
 echo "Syncing ${SOURCE_DIR} TO ${DEST_DIR}"
 sudo rsync -aHAXxSP ${SOURCE_DIR} ${DEST_DIR} > /tmp/lighthouse-rsync.log 2>&1 &

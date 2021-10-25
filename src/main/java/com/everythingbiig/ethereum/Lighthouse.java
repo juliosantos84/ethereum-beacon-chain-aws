@@ -188,11 +188,11 @@ public class Lighthouse extends Stack {
 
     private CloudFormationInit getLighthouseCloudInit() {
         return CloudFormationInit.fromElements(
-            InitCommand.shellCommand("sudo apt update"),
-            InitCommand.shellCommand("sudo apt install awscli jq -y"),
             InitCommand.shellCommand("echo lighthouse > /home/ubuntu/volume-name-tag"),
             InitCommand.shellCommand("echo /var/lib/lighthouse > /home/ubuntu/volume-mount-path"),
             InitCommand.shellCommand("echo lighthousebeacon > /home/ubuntu/volume-mount-path-owner"),
+            InitCommand.shellCommand("sudo mkdir -p /var/lib/lighthouse/validators"),
+            InitCommand.shellCommand("sudo chown -R lighthousevalidator:lighthousevalidator /var/lib/lighthouse/validators"),
             InitCommand.shellCommand("sudo systemctl daemon-reload"),
             InitCommand.shellCommand("sudo systemctl start lighthouse", 
                 InitCommandOptions.builder()
