@@ -16,7 +16,6 @@ public class EthereumStackProps {
     private IPrincipal administrationPrincipal = null;
     private IPeer administrationCidr = null;
     private Boolean createEksCluster = Boolean.TRUE;
-    private Fargate cluster = null;
     
     static EthereumPropsBuilder builder() {
         return new EthereumPropsBuilder();
@@ -76,13 +75,6 @@ public class EthereumStackProps {
     public void setCreateCluster(Boolean createEksCluster) {
         this.createEksCluster = createEksCluster;
     }
-    
-    public Fargate getCluster() {
-        return cluster;
-    }
-    public void setCluster(Fargate cluster) {
-        this.cluster = cluster;
-    }
 
     public static final class EthereumPropsBuilder {
         private Vpc dmzVpc = null;
@@ -93,7 +85,6 @@ public class EthereumStackProps {
         private IPrincipal administrationPrincipal = null;
         private IPeer administrationCidr = null;
         private Boolean createCluster = null;
-        private Fargate cluster = null;
 
         public EthereumPropsBuilder dmzVpc(Vpc dmzVpc) {
             this.dmzVpc = dmzVpc;
@@ -134,11 +125,6 @@ public class EthereumStackProps {
             return this;
         }
 
-        public EthereumPropsBuilder cluster(Fargate cluster) {
-            this.cluster = cluster;
-            return this;
-        }
-
         public Vpc getDmzVpc() {
             return this.dmzVpc;
         }
@@ -169,9 +155,6 @@ public class EthereumStackProps {
         public Boolean createCluster() {
             return this.createCluster;
         }
-        public Fargate getCluster() {
-            return this.cluster;
-        }
         public EthereumStackProps build() {
             EthereumStackProps props = new EthereumStackProps();
             props.setDmzVpc(this.getDmzVpc());
@@ -182,7 +165,6 @@ public class EthereumStackProps {
             props.setAdministrationPrincipal(this.getAdministrationPrincipal());
             props.setAdministrationCidr(this.getAdministrationCidr());
             props.setCreateCluster(this.createCluster());
-            props.setCluster(this.getCluster());
             return props;
         }
 

@@ -11,7 +11,6 @@ public class EthereumBeaconChainService extends Construct {
     private Networking      networking = null;
     private Administration  administration = null;
     private Goeth           goeth = null;
-    private Lighthouse      lighthouse = null;
 
     public EthereumBeaconChainService(software.constructs.@NotNull Construct scope, @NotNull String id) {
         super(scope, id);
@@ -50,19 +49,6 @@ public class EthereumBeaconChainService extends Construct {
                     .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
                     .region(System.getenv("CDK_DEFAULT_REGION"))
                     .build())
-            .build());
-
-        this.lighthouse = new  Lighthouse(this, "lighthouse", 
-            EthereumStackProps.builder()
-                .appVpc(this.networking.getAppVpc())
-                .privateHostedZone(this.networking.getPrivateHostedZone())
-                .administrationCidr(this.administration.getAdministrationCidr())
-                .build(), 
-            StackProps.builder()
-                .env(Environment.builder()
-                        .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                        .region(System.getenv("CDK_DEFAULT_REGION"))
-                        .build())
             .build());
     }
 }

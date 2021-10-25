@@ -51,7 +51,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 public class Goeth extends Stack {
 
     public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("etherythingbiig-10-2021-10-25T00-05-41.834Z").build());
+        LookupMachineImageProps.builder().name("etherythingbiig-11-2021-10-25T15-58-46.016Z").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -115,11 +115,15 @@ public class Goeth extends Stack {
         }
     }
 
+    protected List<String> getSinleAvailabilityZone(){
+        return getAvailabilityZones().subList(0, 1);
+    }
+
     protected List<IVolume> createVolumes() {
         if (this.volumes == null && this.goethProps.getAppVpc() != null) {
             
             this.volumes = new ArrayList<IVolume>();
-            for(String az : this.goethProps.getAppVpc().getAvailabilityZones()) {
+            for(String az : getSinleAvailabilityZone()) {
                 IVolume vol = Volume.Builder.create(this, "chaindataVolume"+az)
                 .volumeName("chaindataVolume-"+az)
                 .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
@@ -221,7 +225,11 @@ public class Goeth extends Stack {
         if (this.goethProps.getAppVpc() != null) {
             this.autoscalingGroup = AutoScalingGroup.Builder.create(this, "goeth")
                 .vpc(this.goethProps.getAppVpc())
-                .vpcSubnets(SubnetSelection.builder().subnetType(SubnetType.PRIVATE).build())
+                .vpcSubnets(
+                    SubnetSelection.builder()
+                        .subnetType(SubnetType.PRIVATE)
+                        .availabilityZones(getSinleAvailabilityZone())
+                        .build())
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
                 .machineImage(GOETH_AMI)
                 .keyName("eth-stack")
