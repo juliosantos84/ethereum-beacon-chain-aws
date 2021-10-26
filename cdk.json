@@ -19,8 +19,9 @@
     "everythingbiig/ethereum-beacon-chain-aws:dmzVpcCidr": "10.1.0.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:appVpcCidr": "10.1.4.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:enableBastionAccess": true,
-    "everythingbiig/ethereum-beacon-chain-aws:keyPair": "",
-    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": true,
-    "everythingbiig/ethereum-beacon-chain-aws:ethereumNetwork": "testnet"
+    "everythingbiig/ethereum-beacon-chain-aws:keyPair": "eth-stack",
+    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": false,
+    "everythingbiig/ethereum-beacon-chain-aws:gethNetwork": "goerli",
+    "everythingbiig/ethereum-beacon-chain-aws:lighthouseNetwork": "pyrmont"
   }
 }

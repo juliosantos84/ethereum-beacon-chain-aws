@@ -21,7 +21,6 @@ import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
-import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -49,9 +48,6 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 
 
 public class Goeth extends Stack {
-
-    public static final IMachineImage GOETH_AMI         = MachineImage.lookup(
-        LookupMachineImageProps.builder().name("etherythingbiig-11-2021-10-25T15-58-46.016Z").build());
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -153,7 +149,7 @@ public class Goeth extends Stack {
             ARecord.Builder.create(this, "goethPrivateARecord")
                 .zone(this.goethProps.getPrivateHostedZone())
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
-                .recordName("goeth.private.ethereum.everythingbiig.com")
+                .recordName(Goeth.this.getRecordName())
                 .build();
         }
 
@@ -204,6 +200,11 @@ public class Goeth extends Stack {
         return this.privateLoadBalancer;
     }
 
+    private String getRecordName() {
+        return String.format("%s.%s", "goeth", 
+            (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:privateHostedZone"));
+    }
+
     protected AutoScalingGroup getAutoscalingGroup() {
         return this.autoscalingGroup;
     }
@@ -231,8 +232,8 @@ public class Goeth extends Stack {
                         .availabilityZones(getSinleAvailabilityZone())
                         .build())
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
-                .machineImage(GOETH_AMI)
-                .keyName("eth-stack")
+                .machineImage(Goeth.this.getMachineImage())
+                .keyName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:keyPair"))
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
                 .init(getGoethNodeCloudInit())
                 .minCapacity(MIN_GETH_INSTANCES)
@@ -252,22 +253,16 @@ public class Goeth extends Stack {
         return this.autoscalingGroup;
     }
 
+    private IMachineImage getMachineImage() {
+        return MachineImage.lookup(
+            LookupMachineImageProps.builder()
+                .name((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:amiName")).build());
+    }
+
     protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
             InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-name-tag"),
-            InitCommand.shellCommand("echo /var/lib/chaindata > /home/ubuntu/volume-mount-path"),
-            InitCommand.shellCommand("sudo systemctl daemon-reload"),
-            // It's possible this command generates an error if the volume is not available
-            // That's OK because the service is configured to retry every 30 seconds
-            InitCommand.shellCommand("sudo systemctl start geth", 
-                InitCommandOptions.builder()
-                    .ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl start lighthousebeacon", 
-                InitCommandOptions.builder()
-                    .ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl start lighthousevalidator", 
-                InitCommandOptions.builder()
-                    .ignoreErrors(Boolean.TRUE).build()));
+            InitCommand.shellCommand("echo /var/lib/chaindata > /home/ubuntu/volume-mount-path"));
     }
 
     public static NetworkListenerProps getNetworkListenerProps(Protocol protocol, Integer port) {

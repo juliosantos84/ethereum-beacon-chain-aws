@@ -84,7 +84,7 @@ public class Networking extends Stack {
         if(this.dmzVpc == null) {
             // 1024 hosts
             this.dmzVpc = Vpc.Builder.create(this, "dmzVpc")
-                .cidr("10.1.0.0/22")
+                .cidr((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:dmzVpcCidr"))
                 .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
                 .maxAzs(Integer.valueOf(AZ_COUNT))
                 .build();
@@ -96,7 +96,7 @@ public class Networking extends Stack {
         if(this.appVpc == null) {
             // 1024 hosts
             this.appVpc = Vpc.Builder.create(this, "appVpc")
-                .cidr("10.1.4.0/22")
+                .cidr((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:appVpcCidr"))
                 .subnetConfiguration(
                     Arrays.asList(
                         SubnetConfiguration.builder()
@@ -106,7 +106,7 @@ public class Networking extends Stack {
                             .name("publicAppSubnet")
                             .subnetType(SubnetType.PUBLIC).build()))
                 .natGateways(AZ_COUNT)
-                .maxAzs(Integer.valueOf(AZ_COUNT))
+                .maxAzs((Integer) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:azCount"))
                 .build();
         }
         return this.appVpc;
@@ -116,7 +116,7 @@ public class Networking extends Stack {
         if( this.privateHostedZone == null) {
             this.privateHostedZone = PrivateHostedZone.Builder.create(this, "privateHostedZone")
                 .vpc(this.getAppVpc()) // We need a default, so it will be the app vpc
-                .zoneName("private.ethereum.everythingbiig.com")
+                .zoneName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:privateHostedZone"))
                 .build();
         }
         return this.privateHostedZone;
@@ -125,7 +125,7 @@ public class Networking extends Stack {
     public PublicHostedZone getPublicHostedZone() {
         if( this.publicHostedZone == null) {
             this.publicHostedZone = PublicHostedZone.Builder.create(this, "publicHostedZone")
-                .zoneName("public.ethereum.everythingbiig.com")
+                .zoneName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:publicHostedZone"))
                 .build();
         }
         return this.publicHostedZone;
