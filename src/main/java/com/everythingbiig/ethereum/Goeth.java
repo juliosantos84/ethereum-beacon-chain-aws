@@ -21,6 +21,7 @@ import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
+import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -200,6 +201,10 @@ public class Goeth extends Stack {
         return this.privateLoadBalancer;
     }
 
+    /**
+     * beaconchain.<region>.<testnet|mainnet>.<private-hosted-zone>
+     * @return
+     */
     private String getRecordName() {
         return String.format("%s.%s", "goeth", 
             (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:privateHostedZone"));
@@ -261,8 +266,16 @@ public class Goeth extends Stack {
 
     protected CloudFormationInit getGoethNodeCloudInit() {
         return CloudFormationInit.fromElements(
-            InitCommand.shellCommand("echo goeth > /home/ubuntu/volume-name-tag"),
-            InitCommand.shellCommand("echo /var/lib/chaindata > /home/ubuntu/volume-mount-path"));
+            // These should be started by the AMI, 
+            // but failed deps can cause subsequent services to fail to start.
+            InitCommand.shellCommand("sudo systemctl start geth", 
+                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl start lighthousebeacon", 
+                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl start lighthousevalidator", 
+                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl start prometheus", 
+                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()));
     }
 
     public static NetworkListenerProps getNetworkListenerProps(Protocol protocol, Integer port) {

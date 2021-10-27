@@ -12,7 +12,7 @@
     "@aws-cdk/aws-ecs-patterns:removeDefaultDesiredCount": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
     "@aws-cdk/aws-efs:defaultEncryptionAtRest": true,
-    "everythingbiig/ethereum-beacon-chain-aws:amiName": "etherythingbiig-1-2021-10-25T20-27-33.290Z",
+    "everythingbiig/ethereum-beacon-chain-aws:amiName": "etherythingbiig-2021-10-27T18-14-51.502Z",
     "everythingbiig/ethereum-beacon-chain-aws:azCount": 2,
     "everythingbiig/ethereum-beacon-chain-aws:privateHostedZone": "private.ethereum.everythingbiig.com",
     "everythingbiig/ethereum-beacon-chain-aws:publicHostedZone": "public.ethereum.everythingbiig.com",
@@ -20,8 +20,6 @@
     "everythingbiig/ethereum-beacon-chain-aws:appVpcCidr": "10.1.4.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:enableBastionAccess": true,
     "everythingbiig/ethereum-beacon-chain-aws:keyPair": "eth-stack",
-    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": false,
-    "everythingbiig/ethereum-beacon-chain-aws:gethNetwork": "goerli",
-    "everythingbiig/ethereum-beacon-chain-aws:lighthouseNetwork": "pyrmont"
+    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": false
   }
 }
