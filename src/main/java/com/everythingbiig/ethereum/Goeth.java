@@ -38,6 +38,7 @@ import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Volume;
 import software.amazon.awscdk.services.ec2.VpcEndpointService;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
+import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
@@ -155,29 +156,46 @@ public class Goeth extends Stack {
                 .build();
         }
 
-        addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT);
-        addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT);
-        addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000));
-        addListenerAndTarget("ssh", Protocol.TCP, SSH_PORT);
+        addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT, null);
+        // addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, createHealthCheck("/", Protocol.HTTP, GOETH_RPC_PORT.toString()));
+        addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, null);
+        addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000), null);
+        // addListenerAndTarget("ssh", Protocol.TCP, SSH_PORT, null);
         
 
         return this.privateLoadBalancer;
     }
 
-    private void addListenerAndTarget(String id, Protocol protocol, Integer port) {
+    private HealthCheck createHealthCheck(String path, Protocol protocol, String port) {
+        return HealthCheck.builder()
+            .enabled(Boolean.TRUE)
+            .healthyHttpCodes("200-299")
+            .healthyThresholdCount(2)
+            .unhealthyThresholdCount(2)
+            .interval(Duration.seconds(30))
+            // .timeout(Duration.seconds(5))
+            .path(path)
+            .protocol(protocol)
+            .port(port)
+            .build();
+    }
+
+    private void addListenerAndTarget(String id, Protocol protocol, Integer port, HealthCheck healthCheck) {
+        AddNetworkTargetsProps.Builder targetPropsBuilder = AddNetworkTargetsProps.builder()
+            .targets(Arrays.asList(this.getAutoscalingGroup()))
+            .port(port)
+            //TODO .healthcheck
+            .deregistrationDelay(TARGET_DEREGISTRATION_DELAY);
+        if (healthCheck != null) {
+            targetPropsBuilder.healthCheck(healthCheck);
+        }
         this.privateLoadBalancer.addListener(id, 
             NetworkListenerProps.builder()
                 .protocol(protocol)
                 .port(port)
                 .loadBalancer(this.privateLoadBalancer)
                 .build()
-        ).addTargets(id, 
-            AddNetworkTargetsProps.builder()
-                .targets(Arrays.asList(this.getAutoscalingGroup()))
-                .port(port)
-                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .build()
-        );
+        ).addTargets(id, targetPropsBuilder.build());
         
         if (Protocol.TCP == protocol || Protocol.TCP_UDP == protocol) {
             getAutoscalingGroupSecurityGroup().addIngressRule(
