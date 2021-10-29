@@ -189,14 +189,6 @@ public class Goeth extends Stack {
         }
     }
 
-    private NetworkListenerProps createNetworkListenerProps(Protocol protocol, Integer port) {
-        return NetworkListenerProps.builder()
-             .protocol(protocol)
-             .port(port)
-             .loadBalancer(this.privateLoadBalancer)
-             .build();
-     }
-
     /**
      * beaconchain.<region>.<testnet|mainnet>.<private-hosted-zone>
      * @return
@@ -265,18 +257,19 @@ public class Goeth extends Stack {
             // getServiceEnvironmentFile("lighthousevalidator"),
             // These should be started by the AMI, 
             // but failed deps can cause subsequent services to fail to start.
-            InitCommand.shellCommand("sudo systemctl enable --now chaindata-volume-attachment", 
-                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl enable --now var-lib-chaindata.mount", 
-                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl start geth", 
-                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl start lighthousebeacon", 
-                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl start lighthousevalidator", 
-                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
-            InitCommand.shellCommand("sudo systemctl start prometheus", 
-                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()));
+            createEnableServiceInitCommand("chaindata-volume-attachment"),
+            createEnableServiceInitCommand("var-lib-chaindata.mount"),
+            createEnableServiceInitCommand("geth"),
+            createEnableServiceInitCommand("lighthousebeacon"),
+            createEnableServiceInitCommand("lighthousevalidator"),
+            createEnableServiceInitCommand("prometheus"));
+    }
+
+    private InitCommand createEnableServiceInitCommand(String serviceName) {
+        return InitCommand.shellCommand(
+            String.format("sudo systemctl enable --now %s", serviceName),
+            InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()
+        );
     }
 
     private InitElement getServiceEnvironmentFile(String serviceName) {
