@@ -51,7 +51,7 @@ public class Lighthouse extends Stack {
     private SecurityGroup lighthouseSecurityGroup = null;
     private List<IVolume> lighthouseVolumes = null;
     private NetworkLoadBalancer privateLoadBalancer = null;
-    private EthereumStackProps lighthouseProps = null;
+    private EthereumBeaconChainProps lighthouseProps = null;
 
     static final Integer LIGHTHOUSE_PORT = Integer.valueOf(9000);
 
@@ -61,7 +61,7 @@ public class Lighthouse extends Stack {
         this(scope, id, null, null);
     }
 
-    public Lighthouse(final Construct scope, final String id, EthereumStackProps lighthouseProps, StackProps props) {
+    public Lighthouse(final Construct scope, final String id, EthereumBeaconChainProps lighthouseProps, StackProps props) {
         super(scope, id, props);
         this.lighthouseProps = lighthouseProps;
         

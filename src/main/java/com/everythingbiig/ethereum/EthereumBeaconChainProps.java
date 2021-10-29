@@ -7,7 +7,8 @@ import software.amazon.awscdk.services.iam.IPrincipal;
 import software.amazon.awscdk.services.route53.PrivateHostedZone;
 import software.amazon.awscdk.services.route53.PublicHostedZone;
 
-public class EthereumStackProps {
+public class EthereumBeaconChainProps {
+    private String environment = null;
     private Vpc appVpc = null;
     private Vpc dmzVpc = null;
     private Vpc devVpc = null;
@@ -15,10 +16,9 @@ public class EthereumStackProps {
     private PrivateHostedZone privateHostedZone = null;
     private IPrincipal administrationPrincipal = null;
     private IPeer administrationCidr = null;
-    private Boolean createEksCluster = Boolean.TRUE;
     
-    static EthereumPropsBuilder builder() {
-        return new EthereumPropsBuilder();
+    static EthereumBeaconChainPropsBuilder builder() {
+        return new EthereumBeaconChainPropsBuilder();
     }
     public Vpc getDmzVpc() {
         return dmzVpc;
@@ -68,15 +68,15 @@ public class EthereumStackProps {
     public Integer getAdministrationPort() {
         return Integer.valueOf(22);
     }
-    
-    public Boolean createCluster() {
-        return createEksCluster;
+    public String getEnvironment() {
+        return environment;
     }
-    public void setCreateCluster(Boolean createEksCluster) {
-        this.createEksCluster = createEksCluster;
+    public void setEnvironment(String environment) {
+        this.environment = environment;
     }
 
-    public static final class EthereumPropsBuilder {
+    public static final class EthereumBeaconChainPropsBuilder {
+        private String environment = null;
         private Vpc dmzVpc = null;
         private Vpc appVpc = null;
         private Vpc devVpc = null;
@@ -84,47 +84,49 @@ public class EthereumStackProps {
         private PrivateHostedZone privateHostedZone = null;
         private IPrincipal administrationPrincipal = null;
         private IPeer administrationCidr = null;
-        private Boolean createCluster = null;
 
-        public EthereumPropsBuilder dmzVpc(Vpc dmzVpc) {
+        public EthereumBeaconChainPropsBuilder environment(String environment) {
+            this.environment = environment;
+            return this;
+        }
+        public EthereumBeaconChainPropsBuilder dmzVpc(Vpc dmzVpc) {
             this.dmzVpc = dmzVpc;
             return this;
         }
 
-        public EthereumPropsBuilder appVpc(Vpc appVpc) {
+        public EthereumBeaconChainPropsBuilder appVpc(Vpc appVpc) {
             this.appVpc = appVpc;
             return this;
         }
-        public EthereumPropsBuilder devVpc(Vpc devVpc) {
+        public EthereumBeaconChainPropsBuilder devVpc(Vpc devVpc) {
             this.devVpc = devVpc;
             return this;
         }
 
-        public EthereumPropsBuilder publicHostedZone(PublicHostedZone publicHostedZone) {
+        public EthereumBeaconChainPropsBuilder publicHostedZone(PublicHostedZone publicHostedZone) {
             this.publicHostedZone = publicHostedZone;
             return this;
         }
 
-        public EthereumPropsBuilder privateHostedZone(PrivateHostedZone privateHostedZone) {
+        public EthereumBeaconChainPropsBuilder privateHostedZone(PrivateHostedZone privateHostedZone) {
             this.privateHostedZone = privateHostedZone;
             return this;
         }
 
-        public EthereumPropsBuilder administrationPrincipal(IPrincipal administrationPrincipal) {
+        public EthereumBeaconChainPropsBuilder administrationPrincipal(IPrincipal administrationPrincipal) {
             this.administrationPrincipal = administrationPrincipal;
             return this;
         }
 
-        public EthereumPropsBuilder administrationCidr(IPeer administrationCidr) {
+        public EthereumBeaconChainPropsBuilder administrationCidr(IPeer administrationCidr) {
             this.administrationCidr = administrationCidr;
             return this;
         }
-
-        public EthereumPropsBuilder createCluster(Boolean createCluster) {
-            this.createCluster = createCluster;
-            return this;
+        
+        public String getEnvironment() {
+            return this.environment;
         }
-
+        
         public Vpc getDmzVpc() {
             return this.dmzVpc;
         }
@@ -152,11 +154,8 @@ public class EthereumStackProps {
         public IPrincipal getAdministrationPrincipal() {
             return administrationPrincipal;
         }
-        public Boolean createCluster() {
-            return this.createCluster;
-        }
-        public EthereumStackProps build() {
-            EthereumStackProps props = new EthereumStackProps();
+        public EthereumBeaconChainProps build() {
+            EthereumBeaconChainProps props = new EthereumBeaconChainProps();
             props.setDmzVpc(this.getDmzVpc());
             props.setAppVpc(this.getAppVpc());
             props.setDevVpc(this.getDevVpc());
@@ -164,7 +163,7 @@ public class EthereumStackProps {
             props.setPrivateHostedZone(this.getPrivateHostedZone());
             props.setAdministrationPrincipal(this.getAdministrationPrincipal());
             props.setAdministrationCidr(this.getAdministrationCidr());
-            props.setCreateCluster(this.createCluster());
+            props.setEnvironment(this.getEnvironment());
             return props;
         }
 

@@ -22,6 +22,9 @@ import software.amazon.awscdk.services.ec2.IPeer;
 import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitCommandOptions;
+import software.amazon.awscdk.services.ec2.InitElement;
+import software.amazon.awscdk.services.ec2.InitFile;
+import software.amazon.awscdk.services.ec2.InitFileOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -35,10 +38,8 @@ import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Volume;
 import software.amazon.awscdk.services.ec2.VpcEndpointService;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
-import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListener;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkLoadBalancer;
-import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkTargetGroup;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.PolicyStatement;
@@ -63,20 +64,20 @@ public class Goeth extends Stack {
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
     private NetworkLoadBalancer privateLoadBalancer                        = null;
-    private SecurityGroup       asgSecurityGroup         = null;
+    private SecurityGroup       autoscalingGroupSecurityGroup         = null;
     private AutoScalingGroup    autoscalingGroup      = null;
     private List<IVolume>       volumes        = null;
     private VpcEndpointService privateLoadBalancerVpcEndpoint = null;
-    private EthereumStackProps goethProps = null;
+    private EthereumBeaconChainProps ethBeaconChainProps = null;
 
     public Goeth(final Construct scope, final String id) {
         this(scope, id, null, null);
     }
 
-    public Goeth(final Construct scope, final String id, final EthereumStackProps goethProps, final StackProps props) {
+    public Goeth(final Construct scope, final String id, final EthereumBeaconChainProps goethProps, final StackProps props) {
         super(scope, id, props);
 
-        this.goethProps = goethProps;
+        this.ethBeaconChainProps = goethProps;
 
         // Configure a persistent volume for chain data
         createVolumes();
@@ -117,7 +118,7 @@ public class Goeth extends Stack {
     }
 
     protected List<IVolume> createVolumes() {
-        if (this.volumes == null && this.goethProps.getAppVpc() != null) {
+        if (this.volumes == null && this.ethBeaconChainProps.getAppVpc() != null) {
             
             this.volumes = new ArrayList<IVolume>();
             for(String az : getSinleAvailabilityZone()) {
@@ -139,67 +140,62 @@ public class Goeth extends Stack {
 
     protected NetworkLoadBalancer createPrivateLoadBalancer() {
         this.privateLoadBalancer = NetworkLoadBalancer.Builder.create(this, "goethLoadBalancer")
-            .vpc(this.goethProps.getAppVpc())
+            .vpc(this.ethBeaconChainProps.getAppVpc())
             .vpcSubnets(SubnetSelection.builder()
                 .subnetType(SubnetType.PRIVATE).build())
             .internetFacing(Boolean.FALSE)
             .crossZoneEnabled(Boolean.TRUE)
             .build();
         
-        if(this.goethProps.getPrivateHostedZone() != null) {
+        if(this.ethBeaconChainProps.getPrivateHostedZone() != null) {
             ARecord.Builder.create(this, "goethPrivateARecord")
-                .zone(this.goethProps.getPrivateHostedZone())
+                .zone(this.ethBeaconChainProps.getPrivateHostedZone())
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
                 .recordName(Goeth.this.getRecordName())
                 .build();
         }
 
-        NetworkListener goEthListener = this.privateLoadBalancer.addListener("goeth", 
-            NetworkListenerProps.builder()
-                .protocol(Protocol.TCP_UDP)
-                .port(GOETH_PORT)
-                .loadBalancer(this.privateLoadBalancer)
-                .build());
+        addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT);
+        addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT);
+        addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000));
+        addListenerAndTarget("ssh", Protocol.TCP, SSH_PORT);
+        
 
-        NetworkListener goethRpcListener = this.privateLoadBalancer.addListener("goethRpc", 
-            NetworkListenerProps.builder()
-                .protocol(Protocol.TCP)
-                .port(GOETH_RPC_PORT)
-                .loadBalancer(this.privateLoadBalancer)
-                .build());
-
-        NetworkListener sshListener = this.privateLoadBalancer.addListener("ssh", 
-            NetworkListenerProps.builder()
-                .protocol(Protocol.TCP)
-                .port(SSH_PORT)
-                .loadBalancer(this.privateLoadBalancer)
-                .build());    
-
-        NetworkTargetGroup goEthTargetGroup = goEthListener.addTargets("goeth", 
-            AddNetworkTargetsProps.builder()
-                .targets(Arrays.asList(this.getAutoscalingGroup()))
-                .port(GOETH_PORT)
-                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .build()
-        );
-
-        NetworkTargetGroup goethRpcTargetGroup = goethRpcListener.addTargets("goethRpc", 
-            AddNetworkTargetsProps.builder()
-                .targets(Arrays.asList(this.getAutoscalingGroup()))
-                .port(GOETH_RPC_PORT)
-                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .build()
-        );
-
-        NetworkTargetGroup sshTargetGroup = sshListener.addTargets("ssh", 
-            AddNetworkTargetsProps.builder()
-                .targets(Arrays.asList(this.getAutoscalingGroup()))
-                .port(Integer.valueOf(22))
-                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
-                .build()
-        );
         return this.privateLoadBalancer;
     }
+
+    private void addListenerAndTarget(String id, Protocol protocol, Integer port) {
+        this.privateLoadBalancer.addListener(id, 
+            NetworkListenerProps.builder()
+                .protocol(protocol)
+                .port(port)
+                .loadBalancer(this.privateLoadBalancer)
+                .build()
+        ).addTargets(id, 
+            AddNetworkTargetsProps.builder()
+                .targets(Arrays.asList(this.getAutoscalingGroup()))
+                .port(port)
+                .deregistrationDelay(TARGET_DEREGISTRATION_DELAY)
+                .build()
+        );
+        
+        if (Protocol.TCP == protocol || Protocol.TCP_UDP == protocol) {
+            getAutoscalingGroupSecurityGroup().addIngressRule(
+                Peer.ipv4(this.ethBeaconChainProps.getAppVpc().getVpcCidrBlock()), Port.tcp(port));
+        }
+        if (Protocol.UDP == protocol || Protocol.TCP_UDP == protocol) {
+            getAutoscalingGroupSecurityGroup().addIngressRule(
+                Peer.ipv4(this.ethBeaconChainProps.getAppVpc().getVpcCidrBlock()), Port.udp(port));
+        }
+    }
+
+    private NetworkListenerProps createNetworkListenerProps(Protocol protocol, Integer port) {
+        return NetworkListenerProps.builder()
+             .protocol(protocol)
+             .port(port)
+             .loadBalancer(this.privateLoadBalancer)
+             .build();
+     }
 
     /**
      * beaconchain.<region>.<testnet|mainnet>.<private-hosted-zone>
@@ -214,23 +210,20 @@ public class Goeth extends Stack {
         return this.autoscalingGroup;
     }
 
-    protected SecurityGroup getEthBackendAsgSecurityGroup() {
-        if (this.asgSecurityGroup == null && this.goethProps.getAppVpc() != null) {
-            this.asgSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
-                .vpc(this.goethProps.getAppVpc())
+    protected SecurityGroup getAutoscalingGroupSecurityGroup() {
+        if (this.autoscalingGroupSecurityGroup == null && this.ethBeaconChainProps.getAppVpc() != null) {
+            this.autoscalingGroupSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
+                .vpc(this.ethBeaconChainProps.getAppVpc())
                 .build();
-            asgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.tcp(GOETH_PORT));
-            asgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.tcp(GOETH_RPC_PORT));
-            asgSecurityGroup.addIngressRule(Peer.ipv4(this.goethProps.getAppVpc().getVpcCidrBlock()), Port.udp(GOETH_PORT));
-            asgSecurityGroup.addIngressRule(this.goethProps.getAdministrationCidr(), Port.tcp(22));
+            autoscalingGroupSecurityGroup.addIngressRule(this.ethBeaconChainProps.getAdministrationCidr(), Port.tcp(22));
         }
-        return this.asgSecurityGroup;
+        return this.autoscalingGroupSecurityGroup;
     }
 
     protected AutoScalingGroup createAutoscalingGroup() {
-        if (this.goethProps.getAppVpc() != null) {
+        if (this.ethBeaconChainProps.getAppVpc() != null) {
             this.autoscalingGroup = AutoScalingGroup.Builder.create(this, "goeth")
-                .vpc(this.goethProps.getAppVpc())
+                .vpc(this.ethBeaconChainProps.getAppVpc())
                 .vpcSubnets(
                     SubnetSelection.builder()
                         .subnetType(SubnetType.PRIVATE)
@@ -240,11 +233,11 @@ public class Goeth extends Stack {
                 .machineImage(Goeth.this.getMachineImage())
                 .keyName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:keyPair"))
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
-                .init(getGoethNodeCloudInit())
+                .init(getCloudInit())
                 .minCapacity(MIN_GETH_INSTANCES)
                 .maxCapacity(MAX_GETH_INSTANCES)
                 .allowAllOutbound(Boolean.TRUE)
-                .securityGroup(this.getEthBackendAsgSecurityGroup())
+                .securityGroup(this.getAutoscalingGroupSecurityGroup())
                 .updatePolicy(UpdatePolicy.rollingUpdate(
                     RollingUpdateOptions.builder()
                         .minInstancesInService(MIN_GETH_INSTANCES)
@@ -264,10 +257,18 @@ public class Goeth extends Stack {
                 .name((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:amiName")).build());
     }
 
-    protected CloudFormationInit getGoethNodeCloudInit() {
+    protected CloudFormationInit getCloudInit() {
         return CloudFormationInit.fromElements(
+            // TODO Copy .env files depending on network.
+            // getServiceEnvironmentFile("geth"),
+            // getServiceEnvironmentFile("lighthousebeacon"),
+            // getServiceEnvironmentFile("lighthousevalidator"),
             // These should be started by the AMI, 
             // but failed deps can cause subsequent services to fail to start.
+            InitCommand.shellCommand("sudo systemctl enable --now chaindata-volume-attachment", 
+                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
+            InitCommand.shellCommand("sudo systemctl enable --now var-lib-chaindata.mount", 
+                InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
             InitCommand.shellCommand("sudo systemctl start geth", 
                 InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()),
             InitCommand.shellCommand("sudo systemctl start lighthousebeacon", 
@@ -278,10 +279,11 @@ public class Goeth extends Stack {
                 InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()));
     }
 
-    public static NetworkListenerProps getNetworkListenerProps(Protocol protocol, Integer port) {
-       return NetworkListenerProps.builder()
-            .protocol(protocol)
-            .port(port)
-            .build();
+    private InitElement getServiceEnvironmentFile(String serviceName) {
+        return InitFile.fromFileInline(
+            String.format("/home/ubuntu/%s.service.env", serviceName), 
+            String.format("src/main/resources/environment/%s/%s.service.env", this.ethBeaconChainProps.getEnvironment(), serviceName), 
+            InitFileOptions.builder()
+                .owner(serviceName).build());
     }
 }

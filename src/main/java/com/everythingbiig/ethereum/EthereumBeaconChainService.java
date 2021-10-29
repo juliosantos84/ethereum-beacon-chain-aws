@@ -24,7 +24,7 @@ public class EthereumBeaconChainService extends Construct {
 
 
         this.administration = new Administration(this, "administration", 
-            EthereumStackProps.builder()
+            EthereumBeaconChainProps.builder()
                 .publicHostedZone(this.networking.getPublicHostedZone())
                 .privateHostedZone(this.networking.getPrivateHostedZone())
                 .dmzVpc(this.networking.getDmzVpc())
@@ -37,12 +37,12 @@ public class EthereumBeaconChainService extends Construct {
                 .build());
 
         this.testnet = new Goeth(this, "goeth", 
-            EthereumStackProps.builder()
+            EthereumBeaconChainProps.builder()
+                .environment("testnet")
                 .appVpc(this.networking.getAppVpc())
                 .privateHostedZone(this.networking.getPrivateHostedZone())
                 .administrationPrincipal(this.administration.getAdministrationPrincipal())
                 .administrationCidr(this.administration.getAdministrationCidr())
-                // .cluster(this.fargate)
                 .build(), 
             StackProps.builder()
                 .env(Environment.builder()

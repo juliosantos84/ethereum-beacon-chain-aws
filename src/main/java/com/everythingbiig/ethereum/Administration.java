@@ -30,13 +30,13 @@ public class Administration extends Stack {
     
     private BastionHostLinux bastion = null;
     private ISecurityGroup bastionSecurityGroup = null;
-    private EthereumStackProps adminProps = null;
+    private EthereumBeaconChainProps adminProps = null;
 
     public Administration(final Construct scope, final String id) {
         this(scope, id, null, null);
     }
 
-    public Administration(Construct scope, String id, EthereumStackProps adminProps, StackProps props) {
+    public Administration(Construct scope, String id, EthereumBeaconChainProps adminProps, StackProps props) {
         super(scope, id, props);
         
         this.adminProps = adminProps;
