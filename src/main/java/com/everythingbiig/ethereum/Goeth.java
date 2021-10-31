@@ -43,6 +43,7 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerPro
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.RecordTarget;
@@ -253,6 +254,11 @@ public class Goeth extends Stack {
                         SignalsOptions.builder().timeout(
                             Duration.minutes(Integer.valueOf(5))).build()))
                 .build();
+                // Add CloudWatch policies
+                this.autoscalingGroup.getRole().addManagedPolicy(
+                    ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy"));
+                this.autoscalingGroup.getRole().addManagedPolicy(
+                    ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
         }
 
         return this.autoscalingGroup;
