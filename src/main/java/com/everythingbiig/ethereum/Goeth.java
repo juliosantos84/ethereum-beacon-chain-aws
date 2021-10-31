@@ -157,11 +157,8 @@ public class Goeth extends Stack {
         }
 
         addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT, null);
-        // addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, createHealthCheck("/", Protocol.HTTP, GOETH_RPC_PORT.toString()));
         addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, null);
         addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000), null);
-        // addListenerAndTarget("ssh", Protocol.TCP, SSH_PORT, null);
-        
 
         return this.privateLoadBalancer;
     }
@@ -173,7 +170,7 @@ public class Goeth extends Stack {
             .healthyThresholdCount(2)
             .unhealthyThresholdCount(2)
             .interval(Duration.seconds(30))
-            // .timeout(Duration.seconds(5))
+            // .timeout(Duration.seconds(5)) // Not supported for NLB
             .path(path)
             .protocol(protocol)
             .port(port)
