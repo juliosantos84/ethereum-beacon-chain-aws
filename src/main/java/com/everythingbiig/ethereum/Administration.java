@@ -22,6 +22,7 @@ import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.IPrincipal;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.RecordTarget;
@@ -68,6 +69,7 @@ public class Administration extends Stack {
 
             this.adminProps.getPrivateHostedZone().addVpc(this.adminProps.getDmzVpc());
 
+            // Allow session manager connections
             this.bastion.getGrantPrincipal()
                 .addToPrincipalPolicy(PolicyStatement.Builder.create()
                     .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
@@ -82,6 +84,18 @@ public class Administration extends Stack {
                     .resources(Arrays.asList(
                         "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
                     .build());
+            // Allow instance administration
+            this.bastion.getGrantPrincipal()
+                .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                    .actions(Arrays.asList("ec2:DescribeInstances"))
+                    .effect(Effect.ALLOW)
+                    .resources(Arrays.asList(
+                        "arn:aws:ec2:" + getRegion() + ":" + getAccount() + ":instance/*"))
+                    .build());
+            this.bastion.getRole().addManagedPolicy(
+                ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentAdminPolicy"));
+            this.bastion.getRole().addManagedPolicy(
+                ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
         }
     }
 

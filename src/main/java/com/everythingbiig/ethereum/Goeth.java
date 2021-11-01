@@ -223,7 +223,9 @@ public class Goeth extends Stack {
             this.autoscalingGroupSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
                 .vpc(this.ethBeaconChainProps.getAppVpc())
                 .build();
-            autoscalingGroupSecurityGroup.addIngressRule(this.ethBeaconChainProps.getAdministrationCidr(), Port.tcp(22));
+            if (shouldEnableBastionAccess()) {
+                autoscalingGroupSecurityGroup.addIngressRule(this.ethBeaconChainProps.getAdministrationCidr(), Port.tcp(22));
+            }
         }
         return this.autoscalingGroupSecurityGroup;
     }
@@ -270,6 +272,10 @@ public class Goeth extends Stack {
                 .name((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:amiName")).build());
     }
 
+    protected Boolean shouldEnableBastionAccess() {
+        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBastionAccess");
+    }
+
     protected CloudFormationInit getCloudInit() {
         return CloudFormationInit.fromElements(
             // TODO Copy .env files depending on network.
@@ -282,8 +288,7 @@ public class Goeth extends Stack {
             createEnableServiceInitCommand("var-lib-chaindata.mount"),
             createEnableServiceInitCommand("geth"),
             createEnableServiceInitCommand("lighthousebeacon"),
-            createEnableServiceInitCommand("lighthousevalidator"),
-            createEnableServiceInitCommand("prometheus"));
+            createEnableServiceInitCommand("lighthousevalidator"));
     }
 
     private InitCommand createEnableServiceInitCommand(String serviceName) {
