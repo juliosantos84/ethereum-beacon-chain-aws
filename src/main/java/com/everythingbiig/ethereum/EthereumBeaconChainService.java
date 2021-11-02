@@ -45,9 +45,9 @@ public class EthereumBeaconChainService extends Construct {
     }
 
     public String getBeaconChainEnvironment() {
-        String beaconChainEnv = System.getenv("BEACON_CHAIN_ENV");
+        String beaconChainEnv = System.getenv("BEACON_CHAIN_NETWORK");
         if (!("testnet".equals(beaconChainEnv) || "mainnet".equals(beaconChainEnv))) {
-            throw new IllegalArgumentException("BEACON_CHAIN_ENV must be one of [testnet,mainnet]");
+            throw new IllegalArgumentException("BEACON_CHAIN_NETWORK must be one of [testnet,mainnet]");
         }
         return beaconChainEnv;
     }
