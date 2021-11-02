@@ -15,11 +15,9 @@ public class EthereumBeaconChainService extends Construct {
     public EthereumBeaconChainService(software.constructs.@NotNull Construct scope, @NotNull String id) {
         super(scope, id);
 
+        Environment deployEnv = getDeployEnvironment();
         this.networking = new Networking(this, "networking", StackProps.builder()
-            .env(Environment.builder()
-                    .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                    .region(System.getenv("CDK_DEFAULT_REGION"))
-                    .build())
+            .env(deployEnv)
             .build());
 
 
@@ -30,23 +28,28 @@ public class EthereumBeaconChainService extends Construct {
                 .dmzVpc(this.networking.getDmzVpc())
                 .build(),
             StackProps.builder()
-                .env(Environment.builder()
-                    .account(System.getenv("CDK_DEFAULT_ACCOUNT"))
-                    .region(System.getenv("CDK_DEFAULT_REGION"))
-                    .build())
+                .env(deployEnv)
                 .build());
 
         this.testnet = new Goeth(this, "goeth", 
             EthereumBeaconChainProps.builder()
-                .beaconChainEnvironment("testnet")
+                .beaconChainEnvironment(getBeaconChainEnvironment())
                 .appVpc(this.networking.getAppVpc())
                 .privateHostedZone(this.networking.getPrivateHostedZone())
                 .administrationPrincipal(this.administration.getAdministrationPrincipal())
                 .administrationCidr(this.administration.getAdministrationCidr())
                 .build(), 
             StackProps.builder()
-                .env(getDeployEnvironment())
+                .env(deployEnv)
             .build());
+    }
+
+    public String getBeaconChainEnvironment() {
+        String beaconChainEnv = System.getenv("BEACON_CHAIN_ENV");
+        if (!("testnet".equals(beaconChainEnv) || "mainnet".equals(beaconChainEnv))) {
+            throw new IllegalArgumentException("BEACON_CHAIN_ENV must be one of [testnet,mainnet]");
+        }
+        return beaconChainEnv;
     }
 
     public Environment getDeployEnvironment() {
