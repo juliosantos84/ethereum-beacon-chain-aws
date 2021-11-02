@@ -8,7 +8,7 @@ import software.amazon.awscdk.services.route53.PrivateHostedZone;
 import software.amazon.awscdk.services.route53.PublicHostedZone;
 
 public class EthereumBeaconChainProps {
-    private String environment = null;
+    private String beaconChainEnvironment = null;
     private Vpc appVpc = null;
     private Vpc dmzVpc = null;
     private Vpc devVpc = null;
@@ -68,15 +68,15 @@ public class EthereumBeaconChainProps {
     public Integer getAdministrationPort() {
         return Integer.valueOf(22);
     }
-    public String getEnvironment() {
-        return environment;
+    public String getBeaconChainEnvironment() {
+        return beaconChainEnvironment;
     }
-    public void setEnvironment(String environment) {
-        this.environment = environment;
+    public void setBeaconChainEnvironment(String beaconChainEnvironment) {
+        this.beaconChainEnvironment = beaconChainEnvironment;
     }
 
     public static final class EthereumBeaconChainPropsBuilder {
-        private String environment = null;
+        private String beaconChainEnvironment = null;
         private Vpc dmzVpc = null;
         private Vpc appVpc = null;
         private Vpc devVpc = null;
@@ -85,8 +85,8 @@ public class EthereumBeaconChainProps {
         private IPrincipal administrationPrincipal = null;
         private IPeer administrationCidr = null;
 
-        public EthereumBeaconChainPropsBuilder environment(String environment) {
-            this.environment = environment;
+        public EthereumBeaconChainPropsBuilder beaconChainEnvironment(String beaconChainEnvironment) {
+            this.beaconChainEnvironment = beaconChainEnvironment;
             return this;
         }
         public EthereumBeaconChainPropsBuilder dmzVpc(Vpc dmzVpc) {
@@ -123,8 +123,8 @@ public class EthereumBeaconChainProps {
             return this;
         }
         
-        public String getEnvironment() {
-            return this.environment;
+        public String getBeaconChainEnvironment() {
+            return this.beaconChainEnvironment;
         }
         
         public Vpc getDmzVpc() {
@@ -163,7 +163,7 @@ public class EthereumBeaconChainProps {
             props.setPrivateHostedZone(this.getPrivateHostedZone());
             props.setAdministrationPrincipal(this.getAdministrationPrincipal());
             props.setAdministrationCidr(this.getAdministrationCidr());
-            props.setEnvironment(this.getEnvironment());
+            props.setBeaconChainEnvironment(this.getBeaconChainEnvironment());
             return props;
         }
 

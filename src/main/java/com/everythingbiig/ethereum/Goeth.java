@@ -1,8 +1,11 @@
 package com.everythingbiig.ethereum;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
 
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Duration;
@@ -23,8 +26,6 @@ import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InitElement;
-import software.amazon.awscdk.services.ec2.InitFile;
-import software.amazon.awscdk.services.ec2.InitFileOptions;
 import software.amazon.awscdk.services.ec2.InstanceClass;
 import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
@@ -36,7 +37,6 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Volume;
-import software.amazon.awscdk.services.ec2.VpcEndpointService;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerProps;
@@ -69,7 +69,6 @@ public class Goeth extends Stack {
     private SecurityGroup       autoscalingGroupSecurityGroup         = null;
     private AutoScalingGroup    autoscalingGroup      = null;
     private List<IVolume>       volumes        = null;
-    private VpcEndpointService privateLoadBalancerVpcEndpoint = null;
     private EthereumBeaconChainProps ethBeaconChainProps = null;
 
     public Goeth(final Construct scope, final String id) {
@@ -278,31 +277,27 @@ public class Goeth extends Stack {
 
     protected CloudFormationInit getCloudInit() {
         return CloudFormationInit.fromElements(
-            // TODO Copy .env files depending on network.
-            // getServiceEnvironmentFile("geth"),
-            // getServiceEnvironmentFile("lighthousebeacon"),
-            // getServiceEnvironmentFile("lighthousevalidator"),
             // These should be started by the AMI, 
             // but failed deps can cause subsequent services to fail to start.
-            createEnableServiceInitCommand("chaindata-volume-attachment"),
-            createEnableServiceInitCommand("var-lib-chaindata.mount"),
-            createEnableServiceInitCommand("geth"),
-            createEnableServiceInitCommand("lighthousebeacon"),
-            createEnableServiceInitCommand("lighthousevalidator"));
+            createServiceToggleInitCommand("chaindata-volume-attachment", "enable --now"),
+            createServiceToggleInitCommand("var-lib-chaindata.mount", "enable --now"),
+            createServiceConfigurationInitCommand("geth", this.ethBeaconChainProps.getBeaconChainEnvironment()),
+            createServiceToggleInitCommand("geth", "enable --now"),
+            createServiceToggleInitCommand("lighthousebeacon", "enable --now"),
+            createServiceToggleInitCommand("lighthousevalidator", "enable --now"));
     }
 
-    private InitCommand createEnableServiceInitCommand(String serviceName) {
+    private @NotNull InitElement createServiceConfigurationInitCommand(String serviceName, String beaconChainEnvironment) {
         return InitCommand.shellCommand(
-            String.format("sudo systemctl enable --now %s", serviceName),
+            MessageFormat.format("sudo ln -s /etc/systemd/system/{0}/{0}.service.{1}.env /etc/systemd/system/{0}.service.env", serviceName, beaconChainEnvironment),
             InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()
         );
     }
 
-    private InitElement getServiceEnvironmentFile(String serviceName) {
-        return InitFile.fromFileInline(
-            String.format("/home/ubuntu/%s.service.env", serviceName), 
-            String.format("src/main/resources/environment/%s/%s.service.env", this.ethBeaconChainProps.getEnvironment(), serviceName), 
-            InitFileOptions.builder()
-                .owner(serviceName).build());
+    private InitCommand createServiceToggleInitCommand(String serviceName, String command) {
+        return InitCommand.shellCommand(
+            String.format("sudo systemctl %s %s", command, serviceName),
+            InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()
+        );
     }
 }

@@ -49,10 +49,12 @@ public class Networking extends Stack {
 
         getPrivateHostedZone();
 
-        configureCrossVpcRouting();
+        if(shouldEnableBastionAccess()) {
+            allowDmzVpcToAppVpcRouting();
+        }
     }
 
-    private void configureCrossVpcRouting() {
+    private void allowDmzVpcToAppVpcRouting() {
         CfnVPCPeeringConnection dmz2AppPeerConn = CfnVPCPeeringConnection.Builder.create(this, "dmz2App")
             .vpcId(dmzVpc.getVpcId())
             .peerOwnerId(getAccount())
@@ -129,5 +131,9 @@ public class Networking extends Stack {
                 .build();
         }
         return this.publicHostedZone;
+    }
+
+    protected Boolean shouldEnableBastionAccess() {
+        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBastionAccess");
     }
 }
