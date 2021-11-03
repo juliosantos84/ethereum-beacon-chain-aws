@@ -63,11 +63,26 @@ sudo rsync -aHAXxSP ${SOURCE_DIR} ${DEST_DIR} > /var/lib/backup/goethereum-rsync
 # Run Command
 Run a set of commands against the nodes:
 
+## Update the cloudwatch agent config
 ```bash
 aws ssm send-command \
 --document-name "AWS-RunShellScript" \
 --document-version "1" \
 --targets '[{"Key":"tag:Name","Values":["ethereumBeaconChainService/goeth/goeth"]}]' \
---parameters '{"commands":["test -f /etc/systemd/system/geth.service"],"workingDirectory":[""],"executionTimeout":["3600"]}' \
+--parameters '{"workingDirectory":[""],"executionTimeout":["3600"],"commands":["sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:cloudwatch-config"]}' \
+--timeout-seconds 600 \
+--max-concurrency "50" \
+--max-errors "0" \
+--cloud-watch-output-config '{"CloudWatchOutputEnabled":true,"CloudWatchLogGroupName":"ssm-run-command"}' \
+--region us-east-1
+```
+
+## Test if a service environment file exists
+```bash
+aws ssm send-command \
+--document-name "AWS-RunShellScript" \
+--document-version "1" \
+--targets '[{"Key":"tag:Name","Values":["ethereumBeaconChainService/goeth/goeth"]}]' \
+--parameters '{"commands":["test -f /etc/systemd/system/geth.service.env"],"workingDirectory":[""],"executionTimeout":["3600"]}' \
 --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
 ```
