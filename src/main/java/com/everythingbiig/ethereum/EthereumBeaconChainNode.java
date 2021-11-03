@@ -86,11 +86,33 @@ public class EthereumBeaconChainNode extends Stack {
         // Autoscaling group for ETH backend
         createAutoscalingGroup();
 
+        if (true || shouldEnableBastionAccess()) {
+            allowSessionManagerAccess();
+        }
+
         // Allow the ASG instances to describe and attach to volumes
         allowVolumeAttachmentToAsg();
         
         // Configure a load balancer and ec2 ASG
         createPrivateLoadBalancer();
+    }
+
+    private void allowSessionManagerAccess() {
+        // Allow session manager connections
+        this.getAutoscalingGroup().getGrantPrincipal()
+            .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
+                .effect(Effect.ALLOW)
+                .resources(Arrays.asList(
+                    String.format("arn:aws:ec2:%s:%s:instance/*", getRegion(), getAccount())))
+                .build());
+        this.getAutoscalingGroup().getGrantPrincipal()
+            .addToPrincipalPolicy(PolicyStatement.Builder.create()
+                .actions(Arrays.asList("ssm:StartSession"))
+                .effect(Effect.ALLOW)
+                .resources(Arrays.asList(
+                    String.format("arn:aws:ec2:%s:%s:instance/*", getRegion(), getAccount())))
+                .build());
     }
 
     private void allowVolumeAttachmentToAsg() {
