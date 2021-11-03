@@ -51,7 +51,7 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 
 
 
-public class Goeth extends Stack {
+public class EthereumBeaconChainNode extends Stack {
     static final Integer    GOETH_PORT                  = Integer.valueOf(30303);
     static final Integer    GOETH_RPC_PORT                  = Integer.valueOf(8545);
     static final Integer    GRAFANA_PORT                = Integer.valueOf(3000);
@@ -71,11 +71,11 @@ public class Goeth extends Stack {
     private List<IVolume>       volumes        = null;
     private EthereumBeaconChainProps ethBeaconChainProps = null;
 
-    public Goeth(final Construct scope, final String id) {
+    public EthereumBeaconChainNode(final Construct scope, final String id) {
         this(scope, id, null, null);
     }
 
-    public Goeth(final Construct scope, final String id, final EthereumBeaconChainProps goethProps, final StackProps props) {
+    public EthereumBeaconChainNode(final Construct scope, final String id, final EthereumBeaconChainProps goethProps, final StackProps props) {
         super(scope, id, props);
 
         this.ethBeaconChainProps = goethProps;
@@ -152,7 +152,7 @@ public class Goeth extends Stack {
             ARecord.Builder.create(this, "goethPrivateARecord")
                 .zone(this.ethBeaconChainProps.getPrivateHostedZone())
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
-                .recordName(Goeth.this.getRecordName())
+                .recordName(EthereumBeaconChainNode.this.getRecordName())
                 .build();
         }
 
@@ -239,7 +239,7 @@ public class Goeth extends Stack {
                         .availabilityZones(getSinleAvailabilityZone())
                         .build())
                 .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
-                .machineImage(Goeth.this.getMachineImage())
+                .machineImage(EthereumBeaconChainNode.this.getMachineImage())
                 .keyName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:keyPair"))
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
                 .init(getCloudInit())

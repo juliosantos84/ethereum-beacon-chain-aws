@@ -10,7 +10,7 @@ public class EthereumBeaconChainService extends Construct {
 
     private Networking      networking = null;
     private Administration  administration = null;
-    private Goeth           beaconChainNode = null;
+    private EthereumBeaconChainNode           beaconChainNode = null;
 
     public EthereumBeaconChainService(software.constructs.@NotNull Construct scope, @NotNull String id) {
         super(scope, id);
@@ -31,7 +31,7 @@ public class EthereumBeaconChainService extends Construct {
                 .env(deployEnv)
                 .build());
 
-        this.beaconChainNode = new Goeth(this, "goeth", 
+        this.beaconChainNode = new EthereumBeaconChainNode(this, "goeth", 
             EthereumBeaconChainProps.builder()
                 .beaconChainEnvironment(getBeaconChainEnvironment())
                 .appVpc(this.networking.getAppVpc())
