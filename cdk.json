@@ -18,6 +18,6 @@
     "everythingbiig/ethereum-beacon-chain-aws:appVpcCidr": "10.1.4.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:enableSessionManager": false,
     "everythingbiig/ethereum-beacon-chain-aws:keyPair": "eth-stack",
-    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": false
+    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": true
   }
 }
