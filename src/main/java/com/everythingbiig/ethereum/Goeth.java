@@ -277,11 +277,14 @@ public class Goeth extends Stack {
 
     protected CloudFormationInit getCloudInit() {
         return CloudFormationInit.fromElements(
-            // These should be started by the AMI, 
-            // but failed deps can cause subsequent services to fail to start.
+            // Enable the volume services
             createServiceToggleInitCommand("chaindata-volume-attachment", "enable --now"),
             createServiceToggleInitCommand("var-lib-chaindata.mount", "enable --now"),
+            // Set environment vars
             createServiceConfigurationInitCommand("geth", this.ethBeaconChainProps.getBeaconChainEnvironment()),
+            createServiceConfigurationInitCommand("lighthousebeacon", this.ethBeaconChainProps.getBeaconChainEnvironment()),
+            createServiceConfigurationInitCommand("lighthousevalidator", this.ethBeaconChainProps.getBeaconChainEnvironment()),
+            // Start services
             createServiceToggleInitCommand("geth", "enable --now"),
             createServiceToggleInitCommand("lighthousebeacon", "enable --now"),
             createServiceToggleInitCommand("lighthousevalidator", "enable --now"));

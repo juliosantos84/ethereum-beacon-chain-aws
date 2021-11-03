@@ -68,6 +68,6 @@ aws ssm send-command \
 --document-name "AWS-RunShellScript" \
 --document-version "1" \
 --targets '[{"Key":"tag:Name","Values":["ethereumBeaconChainService/goeth/goeth"]}]' \
---parameters '{"commands":["sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop","sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c ssm:cloudwatch-config"],"workingDirectory":[""],"executionTimeout":["3600"]}' \
+--parameters '{"commands":["test -f /etc/systemd/system/geth.service"],"workingDirectory":[""],"executionTimeout":["3600"]}' \
 --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
 ```
