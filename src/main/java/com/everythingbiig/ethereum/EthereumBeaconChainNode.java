@@ -86,7 +86,7 @@ public class EthereumBeaconChainNode extends Stack {
         // Autoscaling group for ETH backend
         createAutoscalingGroup();
 
-        if (true || shouldEnableBastionAccess()) {
+        if (enableSessionManager()) {
             allowSessionManagerAccess();
         }
 
@@ -99,6 +99,7 @@ public class EthereumBeaconChainNode extends Stack {
 
     private void allowSessionManagerAccess() {
         // Allow session manager connections
+        // TODO does this need to be more restrictive?
         this.getAutoscalingGroup().getGrantPrincipal()
             .addToPrincipalPolicy(PolicyStatement.Builder.create()
                 .actions(Arrays.asList("ec2-instance-connect:SendSSHPublicKey"))
@@ -244,9 +245,6 @@ public class EthereumBeaconChainNode extends Stack {
             this.autoscalingGroupSecurityGroup = SecurityGroup.Builder.create(this, "backendAsgSecurityGroup")
                 .vpc(this.ethBeaconChainProps.getAppVpc())
                 .build();
-            if (shouldEnableBastionAccess()) {
-                autoscalingGroupSecurityGroup.addIngressRule(this.ethBeaconChainProps.getAdministrationCidr(), Port.tcp(22));
-            }
         }
         return this.autoscalingGroupSecurityGroup;
     }
@@ -293,8 +291,8 @@ public class EthereumBeaconChainNode extends Stack {
                 .name((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:amiName")).build());
     }
 
-    protected Boolean shouldEnableBastionAccess() {
-        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBastionAccess");
+    protected Boolean enableSessionManager() {
+        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableSessionManager");
     }
 
     protected CloudFormationInit getCloudInit() {

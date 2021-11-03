@@ -8,36 +8,22 @@ import software.amazon.awscdk.core.StackProps;
 
 public class EthereumBeaconChainService extends Construct {
 
-    private Networking      networking = null;
-    private Administration  administration = null;
-    private EthereumBeaconChainNode           beaconChainNode = null;
+    private EthereumBeaconChainNetwork      networking = null;
+    private EthereumBeaconChainNode         beaconChainNode = null;
 
     public EthereumBeaconChainService(software.constructs.@NotNull Construct scope, @NotNull String id) {
         super(scope, id);
 
         Environment deployEnv = getDeployEnvironment();
-        this.networking = new Networking(this, "networking", StackProps.builder()
+        this.networking = new EthereumBeaconChainNetwork(this, "networking", StackProps.builder()
             .env(deployEnv)
             .build());
-
-
-        this.administration = new Administration(this, "administration", 
-            EthereumBeaconChainProps.builder()
-                .publicHostedZone(this.networking.getPublicHostedZone())
-                .privateHostedZone(this.networking.getPrivateHostedZone())
-                .dmzVpc(this.networking.getDmzVpc())
-                .build(),
-            StackProps.builder()
-                .env(deployEnv)
-                .build());
 
         this.beaconChainNode = new EthereumBeaconChainNode(this, "goeth", 
             EthereumBeaconChainProps.builder()
                 .beaconChainEnvironment(getBeaconChainEnvironment())
                 .appVpc(this.networking.getAppVpc())
                 .privateHostedZone(this.networking.getPrivateHostedZone())
-                .administrationPrincipal(this.administration.getAdministrationPrincipal())
-                .administrationCidr(this.administration.getAdministrationCidr())
                 .build(), 
             StackProps.builder()
                 .env(deployEnv)

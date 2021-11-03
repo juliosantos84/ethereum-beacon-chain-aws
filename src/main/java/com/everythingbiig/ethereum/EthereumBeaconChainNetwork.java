@@ -5,9 +5,6 @@ import java.util.Arrays;
 import software.amazon.awscdk.core.Construct;
 import software.amazon.awscdk.core.Stack;
 import software.amazon.awscdk.core.StackProps;
-import software.amazon.awscdk.services.ec2.CfnRoute;
-import software.amazon.awscdk.services.ec2.CfnVPCPeeringConnection;
-import software.amazon.awscdk.services.ec2.ISubnet;
 import software.amazon.awscdk.services.ec2.SubnetConfiguration;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Vpc;
@@ -19,12 +16,9 @@ import software.amazon.awscdk.services.route53.PublicHostedZone;
  * 
  * Using a CIDR of 10.1.0.0/22 to define VPCs with up to 1024 hosts.
  */
-public class Networking extends Stack {
+public class EthereumBeaconChainNetwork extends Stack {
     
     public static final Integer AZ_COUNT = Integer.valueOf(2);
-
-    // IGWs, Loadbalancers, NATs, Bastions
-    private Vpc dmzVpc = null;
 
     // Public DNS public.ethereum.everythingbiig.com
     private PublicHostedZone publicHostedZone = null;
@@ -36,62 +30,16 @@ public class Networking extends Stack {
     private PrivateHostedZone privateHostedZone = null;
 
 
-    public Networking(final Construct scope, final String id) {
+    public EthereumBeaconChainNetwork(final Construct scope, final String id) {
         this(scope, id, null);
     }
 
-    public Networking(final Construct scope, final String id, final StackProps props) {
+    public EthereumBeaconChainNetwork(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
-
-        getDmzVpc();
 
         getAppVpc();
 
         getPrivateHostedZone();
-
-        if(shouldEnableBastionAccess()) {
-            allowDmzVpcToAppVpcRouting();
-        }
-    }
-
-    private void allowDmzVpcToAppVpcRouting() {
-        CfnVPCPeeringConnection dmz2AppPeerConn = CfnVPCPeeringConnection.Builder.create(this, "dmz2App")
-            .vpcId(dmzVpc.getVpcId())
-            .peerOwnerId(getAccount())
-            .peerRegion(getRegion())
-            .peerVpcId(appVpc.getVpcId())
-            .build();
-
-        // enable dmz public -> app private
-        for (ISubnet dmzPublic : this.getDmzVpc().getPublicSubnets()) {
-            CfnRoute.Builder.create(this, "dmzPubToAppPriv"+dmzPublic.getAvailabilityZone())
-                .vpcPeeringConnectionId(dmz2AppPeerConn.getRef())
-                .routeTableId(dmzPublic.getRouteTable().getRouteTableId())
-                .destinationCidrBlock(appVpc.getVpcCidrBlock())
-                .build();
-        }
-
-        // enable app private -> dmz public
-        for (ISubnet appPrivate : this.getAppVpc().getPrivateSubnets()) {
-            CfnRoute.Builder.create(this, "appPrivToDmzPub"+appPrivate.getAvailabilityZone())
-                .vpcPeeringConnectionId(dmz2AppPeerConn.getRef())
-                .routeTableId(appPrivate.getRouteTable().getRouteTableId())
-                .destinationCidrBlock(dmzVpc.getVpcCidrBlock())
-                .build();
-        }
-        
-    }
-
-    public Vpc getDmzVpc() {
-        if(this.dmzVpc == null) {
-            // 1024 hosts
-            this.dmzVpc = Vpc.Builder.create(this, "dmzVpc")
-                .cidr((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:dmzVpcCidr"))
-                .subnetConfiguration(Vpc.DEFAULT_SUBNETS)
-                .maxAzs(Integer.valueOf(AZ_COUNT))
-                .build();
-        }
-        return this.dmzVpc;
     }
 
     public Vpc getAppVpc() {
@@ -131,9 +79,5 @@ public class Networking extends Stack {
                 .build();
         }
         return this.publicHostedZone;
-    }
-
-    protected Boolean shouldEnableBastionAccess() {
-        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBastionAccess");
     }
 }
