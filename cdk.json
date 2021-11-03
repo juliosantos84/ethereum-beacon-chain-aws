@@ -15,8 +15,6 @@
     "everythingbiig/ethereum-beacon-chain-aws:amiName": "etherythingbiig-2.1.2-2021-11-03T16-51-51.392Z",
     "everythingbiig/ethereum-beacon-chain-aws:azCount": 2,
     "everythingbiig/ethereum-beacon-chain-aws:privateHostedZone": "private.ethereum.everythingbiig.com",
-    "everythingbiig/ethereum-beacon-chain-aws:publicHostedZone": "public.ethereum.everythingbiig.com",
-    "everythingbiig/ethereum-beacon-chain-aws:dmzVpcCidr": "10.1.0.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:appVpcCidr": "10.1.4.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:enableSessionManager": false,
     "everythingbiig/ethereum-beacon-chain-aws:keyPair": "eth-stack",

@@ -307,9 +307,12 @@ public class EthereumBeaconChainNode extends Stack {
             // Start services
             createServiceToggleInitCommand("geth", "enable --now"),
             createServiceToggleInitCommand("lighthousebeacon", "enable --now"),
-            createServiceToggleInitCommand("lighthousevalidator", "enable --now"));
+            createServiceToggleInitCommand("lighthousevalidator", enableValidator() ? "enable --now" : "disable"));
     }
 
+    private Boolean enableValidator() {
+        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableValidator");
+    }
     private @NotNull InitElement createServiceConfigurationInitCommand(String serviceName, String beaconChainEnvironment) {
         return InitCommand.shellCommand(
             MessageFormat.format("sudo ln -s /etc/systemd/system/{0}/{0}.service.{1}.env /etc/systemd/system/{0}.service.env", serviceName, beaconChainEnvironment),

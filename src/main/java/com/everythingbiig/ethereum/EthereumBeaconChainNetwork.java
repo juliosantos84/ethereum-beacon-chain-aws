@@ -71,13 +71,4 @@ public class EthereumBeaconChainNetwork extends Stack {
         }
         return this.privateHostedZone;
     }
-
-    public PublicHostedZone getPublicHostedZone() {
-        if( this.publicHostedZone == null) {
-            this.publicHostedZone = PublicHostedZone.Builder.create(this, "publicHostedZone")
-                .zoneName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:publicHostedZone"))
-                .build();
-        }
-        return this.publicHostedZone;
-    }
 }
