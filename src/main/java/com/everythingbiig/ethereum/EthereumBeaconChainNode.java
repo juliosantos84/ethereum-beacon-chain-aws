@@ -60,7 +60,6 @@ public class EthereumBeaconChainNode extends Stack {
     static final Integer    MAX_GETH_INSTANCES          = Integer.valueOf(1);
 
     static final IPeer      VPC_CIDR_PEER               = Peer.ipv4(VPC_CIDR);
-    static final Size       ETH_DATA_VOLUME_SIZE        = Size.gibibytes(Integer.valueOf(150));
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
     private NetworkLoadBalancer privateLoadBalancer                        = null;
@@ -147,7 +146,7 @@ public class EthereumBeaconChainNode extends Stack {
                 IVolume vol = Volume.Builder.create(this, "chaindataVolume"+az)
                 .volumeName("chaindataVolume-"+az)
                 .volumeType(software.amazon.awscdk.services.ec2.EbsDeviceVolumeType.GP2)
-                .size(ETH_DATA_VOLUME_SIZE)
+                .size(getVolumeSize())
                 .encrypted(Boolean.TRUE)
                 // .removalPolicy(RemovalPolicy.SNAPSHOT)
                 .availabilityZone(az)
@@ -158,6 +157,12 @@ public class EthereumBeaconChainNode extends Stack {
         }
         return this.volumes;
          
+    }
+
+    private Size getVolumeSize() {
+        return Size.gibibytes(
+            Integer.valueOf(
+                (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:volumeSize")));
     }
 
     protected NetworkLoadBalancer createPrivateLoadBalancer() {
@@ -294,7 +299,7 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     protected Boolean enableSessionManager() {
-        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableSessionManager");
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableSessionManager"));
     }
 
     protected CloudFormationInit getCloudInit() {
