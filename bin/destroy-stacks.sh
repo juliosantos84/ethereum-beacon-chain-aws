@@ -1,6 +1,10 @@
 #! /bin/bash
 
-export CDK_DEFAULT_ACCOUNT=297473205123
-export CDK_DEFAULT_REGION=us-east-1
+# export CDK_DEPLOY_ACCOUNT="you account id"
+# export CDK_DEPLOY_REGION="aws region"
+# export CDK_DEPLOY_PROFILE_FLAG="--profile you-profile"
 
-cdk destroy --all --force
+export CDK_DEFAULT_ACCOUNT=${CDK_DEPLOY_ACCOUNT:-"default account id"}
+export CDK_DEFAULT_REGION=${CDK_DEPLOY_REGION:-"default region"}
+
+cdk destroy --all --force ${CDK_DEPLOY_PROFILE_FLAG}
