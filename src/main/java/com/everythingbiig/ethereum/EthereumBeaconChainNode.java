@@ -305,19 +305,26 @@ public class EthereumBeaconChainNode extends Stack {
     protected CloudFormationInit getCloudInit() {
         return CloudFormationInit.fromElements(
             // Enable the volume services
-            createServiceToggleInitCommand("chaindata-volume-attachment", "enable --now"),
-            createServiceToggleInitCommand("var-lib-chaindata.mount", "enable --now"),
-            createServiceToggleInitCommand("var-lib-chaindata-directory-creator.service", "enable --now"),
+            createServiceToggleInitCommand("chaindata-volume-attachment", enableService()),
+            createServiceToggleInitCommand("var-lib-chaindata.mount", enableService()),
+            createServiceToggleInitCommand("var-lib-chaindata-directory-creator.service", enableService()),
             // Set environment vars
             createServiceConfigurationInitCommand("geth", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousebeacon", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousevalidator", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             // Start services
-            createServiceToggleInitCommand("geth", "enable --now"),
+            createServiceToggleInitCommand("geth", enableService()),
             createServiceToggleInitCommand("lighthousebeacon", getLighthouseBeaconServiceToggle()),
             createServiceToggleInitCommand("lighthousevalidator", getLighthouseValidatorServiceToggle()));
     }
 
+    protected String enableService() {
+        return "enable --now --all";
+    }
+
+    protected String disableService() {
+        return "disable";
+    }
     protected String getLighthouseBeaconServiceToggle() {
         Boolean enableBeacon = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBeacon"));
         return getServiceToggle(enableBeacon);
@@ -329,7 +336,7 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     protected String getServiceToggle(Boolean enabled) {
-        return enabled ? "enable --now": "disable";
+        return enabled ? enableService() : disableService();
     }
 
     protected @NotNull InitElement createServiceConfigurationInitCommand(String serviceName, String beaconChainEnvironment) {
