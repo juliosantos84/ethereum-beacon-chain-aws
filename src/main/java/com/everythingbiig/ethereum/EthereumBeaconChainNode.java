@@ -26,8 +26,6 @@ import software.amazon.awscdk.services.ec2.IVolume;
 import software.amazon.awscdk.services.ec2.InitCommand;
 import software.amazon.awscdk.services.ec2.InitCommandOptions;
 import software.amazon.awscdk.services.ec2.InitElement;
-import software.amazon.awscdk.services.ec2.InstanceClass;
-import software.amazon.awscdk.services.ec2.InstanceSize;
 import software.amazon.awscdk.services.ec2.InstanceType;
 import software.amazon.awscdk.services.ec2.LookupMachineImageProps;
 import software.amazon.awscdk.services.ec2.MachineImage;
@@ -258,7 +256,7 @@ public class EthereumBeaconChainNode extends Stack {
                         .subnetType(SubnetType.PRIVATE)
                         .availabilityZones(getSinleAvailabilityZone())
                         .build())
-                .instanceType(InstanceType.of(InstanceClass.BURSTABLE3_AMD, InstanceSize.SMALL))
+                .instanceType(getInstanceType())
                 .machineImage(EthereumBeaconChainNode.this.getMachineImage())
                 .keyName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:keyPair"))
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
@@ -285,6 +283,10 @@ public class EthereumBeaconChainNode extends Stack {
         return this.autoscalingGroup;
     }
 
+    private InstanceType getInstanceType() {
+        return new InstanceType((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:instanceType"));
+    }
+
     private IMachineImage getMachineImage() {
         return MachineImage.lookup(
             LookupMachineImageProps.builder()
@@ -300,20 +302,32 @@ public class EthereumBeaconChainNode extends Stack {
             // Enable the volume services
             createServiceToggleInitCommand("chaindata-volume-attachment", "enable --now"),
             createServiceToggleInitCommand("var-lib-chaindata.mount", "enable --now"),
+            createServiceToggleInitCommand("var-lib-chaindata-directory-creator.service", "enable --now"),
             // Set environment vars
             createServiceConfigurationInitCommand("geth", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousebeacon", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousevalidator", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             // Start services
             createServiceToggleInitCommand("geth", "enable --now"),
-            createServiceToggleInitCommand("lighthousebeacon", "enable --now"),
-            createServiceToggleInitCommand("lighthousevalidator", enableValidator() ? "enable --now" : "disable"));
+            createServiceToggleInitCommand("lighthousebeacon", getLighthouseBeaconServiceToggle()),
+            createServiceToggleInitCommand("lighthousevalidator", getLighthouseValidatorServiceToggle()));
     }
 
-    private Boolean enableValidator() {
-        return (Boolean) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableValidator");
+    protected String getLighthouseBeaconServiceToggle() {
+        Boolean enableBeacon = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBeacon"));
+        return getServiceToggle(enableBeacon);
     }
-    private @NotNull InitElement createServiceConfigurationInitCommand(String serviceName, String beaconChainEnvironment) {
+
+    protected String getLighthouseValidatorServiceToggle() {
+        Boolean enableValidator = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableValidator"));
+        return getServiceToggle(enableValidator);
+    }
+
+    protected String getServiceToggle(Boolean enabled) {
+        return enabled ? "enable --now": "disable";
+    }
+
+    protected @NotNull InitElement createServiceConfigurationInitCommand(String serviceName, String beaconChainEnvironment) {
         return InitCommand.shellCommand(
             MessageFormat.format("sudo ln -s /etc/systemd/system/{0}/{0}.service.{1}.env /etc/systemd/system/{0}.service.env", serviceName, beaconChainEnvironment),
             InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()

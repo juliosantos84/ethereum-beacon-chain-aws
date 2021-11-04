@@ -13,11 +13,13 @@
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
     "@aws-cdk/aws-efs:defaultEncryptionAtRest": true,
     "everythingbiig/ethereum-beacon-chain-aws:amiName": "etherythingbiig-3.0.1-2021-11-04T01-12-58.327Z",
+    "everythingbiig/ethereum-beacon-chain-aws:instanceType": "t3a.small",
     "everythingbiig/ethereum-beacon-chain-aws:azCount": 2,
     "everythingbiig/ethereum-beacon-chain-aws:privateHostedZone": "private.ethereum.everythingbiig.com",
     "everythingbiig/ethereum-beacon-chain-aws:appVpcCidr": "10.1.4.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:enableSessionManager": false,
     "everythingbiig/ethereum-beacon-chain-aws:keyPair": "eth-stack",
-    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": true
+    "everythingbiig/ethereum-beacon-chain-aws:enableBeacon": false,
+    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": false
   }
 }
