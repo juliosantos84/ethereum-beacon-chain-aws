@@ -283,6 +283,8 @@ public class EthereumBeaconChainNode extends Stack {
                     ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy"));
                 this.autoscalingGroup.getRole().addManagedPolicy(
                     ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
+                this.autoscalingGroup.getRole().addManagedPolicy(
+                    ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ReadOnlyAccess"));
         }
 
         return this.autoscalingGroup;
