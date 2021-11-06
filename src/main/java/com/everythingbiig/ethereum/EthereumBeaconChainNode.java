@@ -35,10 +35,10 @@ import software.amazon.awscdk.services.ec2.SecurityGroup;
 import software.amazon.awscdk.services.ec2.SubnetSelection;
 import software.amazon.awscdk.services.ec2.SubnetType;
 import software.amazon.awscdk.services.ec2.Volume;
-import software.amazon.awscdk.services.elasticloadbalancingv2.AddNetworkTargetsProps;
+import software.amazon.awscdk.services.elasticloadbalancingv2.AddApplicationTargetsProps;
+import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationListenerProps;
+import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
-import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkListenerProps;
-import software.amazon.awscdk.services.elasticloadbalancingv2.NetworkLoadBalancer;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
@@ -62,7 +62,7 @@ public class EthereumBeaconChainNode extends Stack {
     static final IPeer      VPC_CIDR_PEER               = Peer.ipv4(VPC_CIDR);
     static final Duration   TARGET_DEREGISTRATION_DELAY = Duration.seconds(15);
 
-    private NetworkLoadBalancer privateLoadBalancer                        = null;
+    private ApplicationLoadBalancer privateLoadBalancer                        = null;
     private SecurityGroup       autoscalingGroupSecurityGroup         = null;
     private AutoScalingGroup    autoscalingGroup      = null;
     private List<IVolume>       volumes        = null;
@@ -165,13 +165,12 @@ public class EthereumBeaconChainNode extends Stack {
                 (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:volumeSize")));
     }
 
-    protected NetworkLoadBalancer createPrivateLoadBalancer() {
-        this.privateLoadBalancer = NetworkLoadBalancer.Builder.create(this, "goethLoadBalancer")
+    protected ApplicationLoadBalancer createPrivateLoadBalancer() {
+        this.privateLoadBalancer = ApplicationLoadBalancer.Builder.create(this, "beaconChainAlb")
             .vpc(this.ethBeaconChainProps.getAppVpc())
             .vpcSubnets(SubnetSelection.builder()
                 .subnetType(SubnetType.PRIVATE).build())
             .internetFacing(Boolean.FALSE)
-            .crossZoneEnabled(Boolean.TRUE)
             .build();
         
         if(this.ethBeaconChainProps.getPrivateHostedZone() != null) {
@@ -182,10 +181,10 @@ public class EthereumBeaconChainNode extends Stack {
                 .build();
         }
 
-        addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT, null);
-        addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, null);
-        addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000), null);
-
+        // addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT, null);
+        // addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, null);
+        // addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000), null);
+        addListenerAndTarget("prometheus", Protocol.TCP, Integer.valueOf(9090), null);
         return this.privateLoadBalancer;
     }
 
@@ -204,17 +203,16 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     private void addListenerAndTarget(String id, Protocol protocol, Integer port, HealthCheck healthCheck) {
-        AddNetworkTargetsProps.Builder targetPropsBuilder = AddNetworkTargetsProps.builder()
+        AddApplicationTargetsProps.Builder targetPropsBuilder = AddApplicationTargetsProps.builder()
             .targets(Arrays.asList(this.getAutoscalingGroup()))
             .port(port)
-            //TODO .healthcheck
+            // .healthCheck(healthCheck)
             .deregistrationDelay(TARGET_DEREGISTRATION_DELAY);
         if (healthCheck != null) {
             targetPropsBuilder.healthCheck(healthCheck);
         }
         this.privateLoadBalancer.addListener(id, 
-            NetworkListenerProps.builder()
-                .protocol(protocol)
+            ApplicationListenerProps.builder()
                 .port(port)
                 .loadBalancer(this.privateLoadBalancer)
                 .build()
@@ -228,15 +226,6 @@ public class EthereumBeaconChainNode extends Stack {
             getAutoscalingGroupSecurityGroup().addIngressRule(
                 Peer.ipv4(this.ethBeaconChainProps.getAppVpc().getVpcCidrBlock()), Port.udp(port));
         }
-    }
-
-    /**
-     * beaconchain.<region>.<testnet|mainnet>.<private-hosted-zone>
-     * @return
-     */
-    private String getRecordName() {
-        return String.format("%s.%s", "goeth", 
-            (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:privateHostedZone"));
     }
 
     protected AutoScalingGroup getAutoscalingGroup() {
@@ -263,7 +252,7 @@ public class EthereumBeaconChainNode extends Stack {
                         .build())
                 .instanceType(getInstanceType())
                 .machineImage(EthereumBeaconChainNode.this.getMachineImage())
-                .keyName((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:keyPair"))
+                .keyName(getKeyPair())
                 .initOptions(ApplyCloudFormationInitOptions.builder().printLog(Boolean.TRUE).build())
                 .init(getCloudInit())
                 .minCapacity(MIN_GETH_INSTANCES)
@@ -290,26 +279,13 @@ public class EthereumBeaconChainNode extends Stack {
         return this.autoscalingGroup;
     }
 
-    private InstanceType getInstanceType() {
-        return new InstanceType((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:instanceType"));
-    }
-
-    private IMachineImage getMachineImage() {
-        return MachineImage.lookup(
-            LookupMachineImageProps.builder()
-                .name((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:amiName")).build());
-    }
-
-    protected Boolean enableSessionManager() {
-        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableSessionManager"));
-    }
-
     protected CloudFormationInit getCloudInit() {
         return CloudFormationInit.fromElements(
             // Enable the volume services
             createServiceToggleInitCommand("chaindata-volume-attachment", enableService()),
             createServiceToggleInitCommand("var-lib-chaindata.mount", enableService()),
             createServiceToggleInitCommand("var-lib-chaindata-directory-creator.service", enableService()),
+            createServiceToggleInitCommand("prometheus", getPrometheusServiceToggle()),
             // Set environment vars
             createServiceConfigurationInitCommand("geth", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousebeacon", this.ethBeaconChainProps.getBeaconChainEnvironment()),
@@ -327,14 +303,47 @@ public class EthereumBeaconChainNode extends Stack {
     protected String disableService() {
         return "disable";
     }
+
+    protected String getKeyPair() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:keyPair");
+    }
+
+    protected InstanceType getInstanceType() {
+        return new InstanceType((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:instanceType"));
+    }
+
+    protected IMachineImage getMachineImage() {
+        return MachineImage.lookup(
+            LookupMachineImageProps.builder()
+                .name((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:amiName")).build());
+    }
+
+    protected Boolean enableSessionManager() {
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableSessionManager"));
+    }
+
     protected String getLighthouseBeaconServiceToggle() {
         Boolean enableBeacon = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableBeacon"));
         return getServiceToggle(enableBeacon);
     }
 
+    protected String getPrometheusServiceToggle() {
+        Boolean enablePrometheus = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enablePrometheus"));
+        return getServiceToggle(enablePrometheus);
+    }
+
     protected String getLighthouseValidatorServiceToggle() {
         Boolean enableValidator = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableValidator"));
         return getServiceToggle(enableValidator);
+    }
+
+    /**
+     * beaconchain.<region>.<testnet|mainnet>.<private-hosted-zone>
+     * @return
+     */
+    protected String getRecordName() {
+        return String.format("%s.%s", "goeth", 
+            (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:privateHostedZone"));
     }
 
     protected String getServiceToggle(Boolean enabled) {

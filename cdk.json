@@ -21,6 +21,7 @@
     "everythingbiig/ethereum-beacon-chain-aws:enableSessionManager": "false",
     "everythingbiig/ethereum-beacon-chain-aws:keyPair": "eth-stack",
     "everythingbiig/ethereum-beacon-chain-aws:enableBeacon": "false",
-    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": "false"
+    "everythingbiig/ethereum-beacon-chain-aws:enableValidator": "false",
+    "everythingbiig/ethereum-beacon-chain-aws:enablePrometheus": "false"
   }
 }
