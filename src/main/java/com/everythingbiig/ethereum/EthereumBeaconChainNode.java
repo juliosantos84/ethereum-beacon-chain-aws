@@ -38,6 +38,7 @@ import software.amazon.awscdk.services.ec2.Volume;
 import software.amazon.awscdk.services.elasticloadbalancingv2.AddApplicationTargetsProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationListenerProps;
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationLoadBalancer;
+import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationProtocol;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
@@ -179,12 +180,8 @@ public class EthereumBeaconChainNode extends Stack {
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
                 .recordName(EthereumBeaconChainNode.this.getRecordName())
                 .build();
-        }
-
-        // addListenerAndTarget("goeth", Protocol.TCP_UDP, GOETH_PORT, null);
-        // addListenerAndTarget("goethRpc", Protocol.TCP, GOETH_RPC_PORT, null);
-        // addListenerAndTarget("lighthouse", Protocol.TCP, Integer.valueOf(9000), null);
-        addListenerAndTarget("prometheus", Protocol.TCP, Integer.valueOf(9090), null);
+        }        
+        addListenerAndTarget("prometheus", ApplicationProtocol.HTTP, Integer.valueOf(9090), null);
         return this.privateLoadBalancer;
     }
 
@@ -202,11 +199,11 @@ public class EthereumBeaconChainNode extends Stack {
             .build();
     }
 
-    private void addListenerAndTarget(String id, Protocol protocol, Integer port, HealthCheck healthCheck) {
+    private void addListenerAndTarget(String id, ApplicationProtocol protocol, Integer port, HealthCheck healthCheck) {
         AddApplicationTargetsProps.Builder targetPropsBuilder = AddApplicationTargetsProps.builder()
             .targets(Arrays.asList(this.getAutoscalingGroup()))
             .port(port)
-            // .healthCheck(healthCheck)
+            .protocol(protocol)
             .deregistrationDelay(TARGET_DEREGISTRATION_DELAY);
         if (healthCheck != null) {
             targetPropsBuilder.healthCheck(healthCheck);
@@ -214,18 +211,13 @@ public class EthereumBeaconChainNode extends Stack {
         this.privateLoadBalancer.addListener(id, 
             ApplicationListenerProps.builder()
                 .port(port)
+                .protocol(protocol)
                 .loadBalancer(this.privateLoadBalancer)
                 .build()
         ).addTargets(id, targetPropsBuilder.build());
         
-        if (Protocol.TCP == protocol || Protocol.TCP_UDP == protocol) {
-            getAutoscalingGroupSecurityGroup().addIngressRule(
+        getAutoscalingGroupSecurityGroup().addIngressRule(
                 Peer.ipv4(this.ethBeaconChainProps.getAppVpc().getVpcCidrBlock()), Port.tcp(port));
-        }
-        if (Protocol.UDP == protocol || Protocol.TCP_UDP == protocol) {
-            getAutoscalingGroupSecurityGroup().addIngressRule(
-                Peer.ipv4(this.ethBeaconChainProps.getAppVpc().getVpcCidrBlock()), Port.udp(port));
-        }
     }
 
     protected AutoScalingGroup getAutoscalingGroup() {
@@ -328,8 +320,12 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     protected String getPrometheusServiceToggle() {
-        Boolean enablePrometheus = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enablePrometheus"));
+        Boolean enablePrometheus = enablePrometheus();
         return getServiceToggle(enablePrometheus);
+    }
+
+    protected Boolean enablePrometheus() {
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enablePrometheus"));
     }
 
     protected String getLighthouseValidatorServiceToggle() {
