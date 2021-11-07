@@ -121,9 +121,9 @@ public class EthereumBeaconChainNode extends Stack {
             .comparisonOperator(ComparisonOperator.LESS_THAN_THRESHOLD)
             .threshold(Integer.valueOf(40))
             .build();
-        this.alarmCpuHigh = Alarm.Builder.create(this, "cpuLowAlarm")
-            .alarmDescription("Fires when CPU utilization falls below the configured threshold.")
-            .alarmName("beaconChainCpuLow")
+        this.alarmCpuHigh = Alarm.Builder.create(this, "cpuHigh")
+            .alarmDescription("Fires when CPU utilization rises above the configured threshold.")
+            .alarmName("beaconChainCpuHigh")
             .metric(Metric.Builder.create()
                 .namespace("AWS/EC2")
                 .metricName("CPUUtilization")
