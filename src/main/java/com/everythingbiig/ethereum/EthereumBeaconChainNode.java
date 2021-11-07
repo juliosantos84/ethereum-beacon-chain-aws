@@ -19,6 +19,10 @@ import software.amazon.awscdk.services.autoscaling.RollingUpdateOptions;
 import software.amazon.awscdk.services.autoscaling.Signals;
 import software.amazon.awscdk.services.autoscaling.SignalsOptions;
 import software.amazon.awscdk.services.autoscaling.UpdatePolicy;
+import software.amazon.awscdk.services.cloudwatch.Alarm;
+import software.amazon.awscdk.services.cloudwatch.ComparisonOperator;
+import software.amazon.awscdk.services.cloudwatch.Metric;
+import software.amazon.awscdk.services.cloudwatch.Statistic;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
 import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
@@ -68,6 +72,8 @@ public class EthereumBeaconChainNode extends Stack {
     private AutoScalingGroup    autoscalingGroup      = null;
     private List<IVolume>       volumes        = null;
     private EthereumBeaconChainProps ethBeaconChainProps = null;
+    private Alarm alarmCpuLow = null;
+    private Alarm alarmCpuHigh = null;
 
     public EthereumBeaconChainNode(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -91,8 +97,45 @@ public class EthereumBeaconChainNode extends Stack {
         // Allow the ASG instances to describe and attach to volumes
         allowVolumeAttachmentToAsg();
         
-        // Configure a load balancer and ec2 ASG
+        // Configure a load balancer
         createPrivateLoadBalancer();
+
+        if (createAlarms()) {
+            createCloudWatchAlarms();
+        }
+    }
+
+    protected void createCloudWatchAlarms() {
+        this.alarmCpuLow = Alarm.Builder.create(this, "cpuLowAlarm")
+            .alarmDescription("Fires when CPU utilization falls below the configured threshold.")
+            .alarmName("beaconChainCpuLow")
+            .metric(Metric.Builder.create()
+                .namespace("AWS/EC2")
+                .metricName("CPUUtilization")
+                .statistic(Statistic.AVERAGE.name())
+                .period(Duration.minutes(5))
+                .build()
+            )
+            .datapointsToAlarm(2)
+            .evaluationPeriods(2)
+            .comparisonOperator(ComparisonOperator.LESS_THAN_THRESHOLD)
+            .threshold(Integer.valueOf(40))
+            .build();
+        this.alarmCpuHigh = Alarm.Builder.create(this, "cpuLowAlarm")
+            .alarmDescription("Fires when CPU utilization falls below the configured threshold.")
+            .alarmName("beaconChainCpuLow")
+            .metric(Metric.Builder.create()
+                .namespace("AWS/EC2")
+                .metricName("CPUUtilization")
+                .statistic(Statistic.AVERAGE.name())
+                .period(Duration.minutes(5))
+                .build()
+            )
+            .datapointsToAlarm(2)
+            .evaluationPeriods(2)
+            .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
+            .threshold(Integer.valueOf(90))
+            .build();
     }
 
     private void allowSessionManagerAccess() {
@@ -340,6 +383,10 @@ public class EthereumBeaconChainNode extends Stack {
     protected String getRecordName() {
         return String.format("%s.%s", "goeth", 
             (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:privateHostedZone"));
+    }
+
+    protected Boolean createAlarms() {
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:createAlarms"));
     }
 
     protected String getServiceToggle(Boolean enabled) {

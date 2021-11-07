@@ -5,7 +5,7 @@
 
     <groupId>com.everythingbiig.ethereum</groupId>
     <artifactId>eth2</artifactId>
-    <version>4.0.0</version>
+    <version>4.0.1</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -80,7 +80,7 @@
         </dependency>
         <dependency>
             <groupId>software.amazon.awscdk</groupId>
-            <artifactId>eks</artifactId>
+            <artifactId>cloudwatch</artifactId>
             <version>${cdk.version}</version>
         </dependency>
         <!-- Test Dependencies -->
