@@ -325,6 +325,8 @@ public class EthereumBeaconChainNode extends Stack {
             createServiceConfigurationInitCommand("geth", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousebeacon", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousevalidator", this.ethBeaconChainProps.getBeaconChainEnvironment()),
+            // Customize env vars
+            createBeaconChainMonitoringInitCommand(),
             // Start services
             createServiceToggleInitCommand("geth", enableService()),
             createServiceToggleInitCommand("lighthousebeacon", getLighthouseBeaconServiceToggle()),
@@ -345,6 +347,15 @@ public class EthereumBeaconChainNode extends Stack {
 
     protected InstanceType getInstanceType() {
         return new InstanceType((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:instanceType"));
+    }
+
+    protected String beaconChainMonitoringEndpoint() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:beaconChainMonitoringEndpoint");
+    }
+
+    protected Boolean enableBeaconChainMonitoring() {
+        String endpoint = beaconChainMonitoringEndpoint();
+        return endpoint != null && endpoint.indexOf("https://") >= 0;
     }
 
     protected IMachineImage getMachineImage() {
@@ -374,6 +385,18 @@ public class EthereumBeaconChainNode extends Stack {
     protected String getLighthouseValidatorServiceToggle() {
         Boolean enableValidator = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableValidator"));
         return getServiceToggle(enableValidator);
+    }
+
+    protected InitCommand createBeaconChainMonitoringInitCommand() {
+        if (enableBeaconChainMonitoring()) {
+            return InitCommand.shellCommand(
+                String.format("echo 'Beaconchain monitoring enabled, adding LIGHTHOUSE_MONITORING_ENDPOINT_FLAG (no-op for now)...' && echo 'LIGHTHOUSE_MONITORING_ENDPOINT_FLAG=\"--monitoring-endpoint \\\"%s\\\"\"'", beaconChainMonitoringEndpoint())
+                // To pipe to env file forrreal: | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null
+                , InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()
+            );
+        } else {
+            return InitCommand.shellCommand("echo 'Beaconchain monitoring is not enabled.'");
+        }
     }
 
     /**
