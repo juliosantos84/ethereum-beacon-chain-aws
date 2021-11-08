@@ -98,7 +98,9 @@ public class EthereumBeaconChainNode extends Stack {
         allowVolumeAttachmentToAsg();
         
         // Configure a load balancer
-        createPrivateLoadBalancer();
+        if (createLoadbalancer()) {
+            createPrivateLoadBalancer();
+        }
 
         if (createAlarms()) {
             createCloudWatchAlarms();
@@ -212,8 +214,7 @@ public class EthereumBeaconChainNode extends Stack {
     protected ApplicationLoadBalancer createPrivateLoadBalancer() {
         this.privateLoadBalancer = ApplicationLoadBalancer.Builder.create(this, "beaconChainAlb")
             .vpc(this.ethBeaconChainProps.getAppVpc())
-            .vpcSubnets(SubnetSelection.builder()
-                .subnetType(SubnetType.PRIVATE).build())
+            .vpcSubnets(getAppVpcSubnets())
             .internetFacing(Boolean.FALSE)
             .build();
         
@@ -280,11 +281,7 @@ public class EthereumBeaconChainNode extends Stack {
         if (this.ethBeaconChainProps.getAppVpc() != null) {
             this.autoscalingGroup = AutoScalingGroup.Builder.create(this, "goeth")
                 .vpc(this.ethBeaconChainProps.getAppVpc())
-                .vpcSubnets(
-                    SubnetSelection.builder()
-                        .subnetType(SubnetType.PRIVATE)
-                        .availabilityZones(getSinleAvailabilityZone())
-                        .build())
+                .vpcSubnets(getAppVpcSubnets())
                 .instanceType(getInstanceType())
                 .machineImage(EthereumBeaconChainNode.this.getMachineImage())
                 .keyName(getKeyPair())
@@ -312,6 +309,13 @@ public class EthereumBeaconChainNode extends Stack {
         }
 
         return this.autoscalingGroup;
+    }
+
+    private SubnetSelection getAppVpcSubnets() {
+        return SubnetSelection.builder()
+            .subnetType(SubnetType.PRIVATE)
+            .availabilityZones(getSinleAvailabilityZone())
+            .build();
     }
 
     protected CloudFormationInit getCloudInit() {
@@ -380,6 +384,10 @@ public class EthereumBeaconChainNode extends Stack {
 
     protected Boolean enablePrometheus() {
         return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enablePrometheus"));
+    }
+
+    protected Boolean createLoadbalancer() {
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:createLoadbalancer"));
     }
 
     protected String getLighthouseValidatorServiceToggle() {

@@ -17,8 +17,6 @@ import software.amazon.awscdk.services.route53.PublicHostedZone;
  * Using a CIDR of 10.1.0.0/22 to define VPCs with up to 1024 hosts.
  */
 public class EthereumBeaconChainNetwork extends Stack {
-    
-    public static final Integer AZ_COUNT = Integer.valueOf(2);
 
     // Public DNS public.ethereum.everythingbiig.com
     private PublicHostedZone publicHostedZone = null;
@@ -46,7 +44,7 @@ public class EthereumBeaconChainNetwork extends Stack {
         if(this.appVpc == null) {
             // 1024 hosts
             this.appVpc = Vpc.Builder.create(this, "appVpc")
-                .cidr((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:appVpcCidr"))
+                .cidr(getAppVpcCidr())
                 .subnetConfiguration(
                     Arrays.asList(
                         SubnetConfiguration.builder()
@@ -55,14 +53,22 @@ public class EthereumBeaconChainNetwork extends Stack {
                         SubnetConfiguration.builder()
                             .name("publicAppSubnet")
                             .subnetType(SubnetType.PUBLIC).build()))
-                .natGateways(AZ_COUNT)
-                .maxAzs((Integer) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:azCount"))
+                .natGateways(getAzCount())
+                .maxAzs(getAzCount())
                 .build();
         }
         return this.appVpc;
     }
 
-    public PrivateHostedZone getPrivateHostedZone() {
+    protected String getAppVpcCidr() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:appVpcCidr");
+    }
+
+    protected Integer getAzCount() {
+        return Integer.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:azCount"));
+    }
+
+    protected PrivateHostedZone getPrivateHostedZone() {
         if( this.privateHostedZone == null) {
             this.privateHostedZone = PrivateHostedZone.Builder.create(this, "privateHostedZone")
                 .vpc(this.getAppVpc()) // We need a default, so it will be the app vpc

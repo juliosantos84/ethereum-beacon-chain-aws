@@ -12,10 +12,10 @@
     "@aws-cdk/aws-ecs-patterns:removeDefaultDesiredCount": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
     "@aws-cdk/aws-efs:defaultEncryptionAtRest": true,
-    "everythingbiig/ethereum-beacon-chain-aws:amiName": "etherythingbiig-3.0.1-2021-11-04T01-12-58.327Z",
+    "everythingbiig/ethereum-beacon-chain-aws:amiName": "etherythingbiig-3.0.8-2021-11-06T15-35-32.023Z",
     "everythingbiig/ethereum-beacon-chain-aws:instanceType": "t3a.small",
     "everythingbiig/ethereum-beacon-chain-aws:volumeSize": "150",
-    "everythingbiig/ethereum-beacon-chain-aws:azCount": 2,
+    "everythingbiig/ethereum-beacon-chain-aws:azCount": "2",
     "everythingbiig/ethereum-beacon-chain-aws:privateHostedZone": "private.ethereum.everythingbiig.com",
     "everythingbiig/ethereum-beacon-chain-aws:appVpcCidr": "10.1.4.0/22",
     "everythingbiig/ethereum-beacon-chain-aws:enableSessionManager": "false",
@@ -23,6 +23,7 @@
     "everythingbiig/ethereum-beacon-chain-aws:enableBeacon": "false",
     "everythingbiig/ethereum-beacon-chain-aws:enableValidator": "false",
     "everythingbiig/ethereum-beacon-chain-aws:enablePrometheus": "false",
-    "everythingbiig/ethereum-beacon-chain-aws:createAlarms": "false"
+    "everythingbiig/ethereum-beacon-chain-aws:createAlarms": "false",
+    "everythingbiig/ethereum-beacon-chain-aws:createLoadbalancer": "false"
   }
 }
