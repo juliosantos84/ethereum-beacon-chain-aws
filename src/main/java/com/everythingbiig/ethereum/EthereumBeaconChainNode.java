@@ -47,6 +47,7 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.iam.Policy;
 import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.RecordTarget;
@@ -212,14 +213,14 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     protected ApplicationLoadBalancer createPrivateLoadBalancer() {
-        this.privateLoadBalancer = ApplicationLoadBalancer.Builder.create(this, "beaconChainAlb")
+        this.privateLoadBalancer = ApplicationLoadBalancer.Builder.create(this, "beaconNodeAlb")
             .vpc(this.ethBeaconChainProps.getAppVpc())
             .vpcSubnets(getAppVpcSubnets())
             .internetFacing(Boolean.FALSE)
             .build();
         
         if(this.ethBeaconChainProps.getPrivateHostedZone() != null) {
-            ARecord.Builder.create(this, "goethPrivateARecord")
+            ARecord.Builder.create(this, "beaconNodePrivateRecord")
                 .zone(this.ethBeaconChainProps.getPrivateHostedZone())
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(this.privateLoadBalancer)))
                 .recordName(EthereumBeaconChainNode.this.getRecordName())
@@ -306,6 +307,17 @@ public class EthereumBeaconChainNode extends Stack {
                     ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
                 this.autoscalingGroup.getRole().addManagedPolicy(
                     ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ReadOnlyAccess"));
+                // Let the instances manage themselves
+                this.autoscalingGroup.getRole().attachInlinePolicy(
+                    Policy.Builder.create(this, "beaconChainPolicy")
+                        .policyName("BeaconChainPolicy")
+                        .statements(Arrays.asList(PolicyStatement.Builder.create()
+                            .effect(Effect.ALLOW)
+                            .actions(Arrays.asList("autoscaling:SetInstanceHealth"))
+                            .resources(Arrays.asList(this.autoscalingGroup.getAutoScalingGroupArn()))
+                            .build()))
+                        .build()
+                );
         }
 
         return this.autoscalingGroup;
