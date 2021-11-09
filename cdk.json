@@ -24,6 +24,7 @@
     "everythingbiig/ethereum-beacon-chain-aws:enableValidator": "false",
     "everythingbiig/ethereum-beacon-chain-aws:enablePrometheus": "false",
     "everythingbiig/ethereum-beacon-chain-aws:createAlarms": "false",
-    "everythingbiig/ethereum-beacon-chain-aws:createLoadbalancer": "false"
+    "everythingbiig/ethereum-beacon-chain-aws:createLoadbalancer": "false",
+    "everythingbiig/ethereum-beacon-chain-aws:beaconChainMonitoringEndpoint": ""
   }
 }

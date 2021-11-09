@@ -342,10 +342,10 @@ public class EthereumBeaconChainNode extends Stack {
             createServiceConfigurationInitCommand("lighthousebeacon", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             createServiceConfigurationInitCommand("lighthousevalidator", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             // Customize env vars
-            // createBeaconChainMonitoringInitCommand(),
+            createBeaconChainMonitoringInitCommand(),
             // Start services
             createServiceToggleInitCommand("geth", enableService()),
-            createServiceToggleInitCommand("lighthousebeacon", getLighthouseBeaconServiceToggle()),
+            createServiceToggleInitCommand(enableBeaconChainMonitoring() ? "lighthousebeacon-ext-monitoring" : "lighthousebeacon", getLighthouseBeaconServiceToggle()),
             createServiceToggleInitCommand("lighthousevalidator", getLighthouseValidatorServiceToggle()));
     }
 
@@ -410,7 +410,7 @@ public class EthereumBeaconChainNode extends Stack {
     protected InitCommand createBeaconChainMonitoringInitCommand() {
         if (enableBeaconChainMonitoring()) {
             return InitCommand.shellCommand(
-                String.format("echo 'Beaconchain monitoring enabled, adding LIGHTHOUSE_MONITORING_ENDPOINT_FLAG to service.env...' && echo \"LIGHTHOUSE_MONITORING_ENDPOINT_FLAG=\"--monitoring-endpoint '%s'\"\" | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null", beaconChainMonitoringEndpoint())
+                String.format("echo 'Beaconchain monitoring enabled, adding LIGHTHOUSE_MONITORING_ENDPOINT_FLAG to service.env...' && echo 'LIGHTHOUSE_MONITORING_ENDPOINT=\"%s\"' | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null", beaconChainMonitoringEndpoint())
                 // To pipe to env file forrreal: | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null
                 , InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()
             );
