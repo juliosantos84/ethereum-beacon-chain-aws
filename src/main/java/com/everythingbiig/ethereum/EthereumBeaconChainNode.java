@@ -73,8 +73,6 @@ public class EthereumBeaconChainNode extends Stack {
     private AutoScalingGroup    autoscalingGroup      = null;
     private List<IVolume>       volumes        = null;
     private EthereumBeaconChainProps ethBeaconChainProps = null;
-    private Alarm alarmCpuLow = null;
-    private Alarm alarmCpuHigh = null;
 
     public EthereumBeaconChainNode(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -109,7 +107,7 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     protected void createCloudWatchAlarms() {
-        this.alarmCpuLow = Alarm.Builder.create(this, "cpuLowAlarm")
+        Alarm.Builder.create(this, "cpuLowAlarm")
             .alarmDescription("Fires when CPU utilization falls below the configured threshold.")
             .alarmName("beaconChainCpuLow")
             .metric(Metric.Builder.create()
@@ -124,7 +122,7 @@ public class EthereumBeaconChainNode extends Stack {
             .comparisonOperator(ComparisonOperator.LESS_THAN_THRESHOLD)
             .threshold(Integer.valueOf(40))
             .build();
-        this.alarmCpuHigh = Alarm.Builder.create(this, "cpuHigh")
+        Alarm.Builder.create(this, "cpuHigh")
             .alarmDescription("Fires when CPU utilization rises above the configured threshold.")
             .alarmName("beaconChainCpuHigh")
             .metric(Metric.Builder.create()
@@ -138,6 +136,21 @@ public class EthereumBeaconChainNode extends Stack {
             .evaluationPeriods(2)
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
             .threshold(Integer.valueOf(90))
+            .build();
+        Alarm.Builder.create(this, "memoryHigh")
+            .alarmDescription("Fires when memory utilization rises above the configured threshold.")
+            .alarmName("beaconChainMemHigh")
+            .metric(Metric.Builder.create()
+                .namespace("EthBeaconChain")
+                .metricName("mem_used")
+                .statistic(Statistic.AVERAGE.name())
+                .period(Duration.minutes(5))
+                .build()
+            )
+            .datapointsToAlarm(1)
+            .evaluationPeriods(1)
+            .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
+            .threshold(Double.valueOf(7000000000d))
             .build();
     }
 
