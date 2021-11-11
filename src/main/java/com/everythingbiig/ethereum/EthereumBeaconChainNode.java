@@ -58,6 +58,8 @@ import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.RecordTarget;
 import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
+import software.amazon.awscdk.services.sns.Subscription;
+import software.amazon.awscdk.services.sns.SubscriptionProtocol;
 import software.amazon.awscdk.services.sns.Topic;
 
 
@@ -123,6 +125,13 @@ public class EthereumBeaconChainNode extends Stack {
             .fifo(Boolean.FALSE)
             .build();
         this.cloudWatchAlarmsTopic.grantPublish(ServicePrincipal.Builder.create("cloudwatch.amazonaws.com").build());
+        if(sendAlarmNotificationEmail()) {
+            Subscription.Builder.create(this, "beaconChainAlarmEmails")
+                .protocol(SubscriptionProtocol.EMAIL)
+                .endpoint(getAlarmNotificationEmail())
+                .topic(this.cloudWatchAlarmsTopic)
+                .build();
+        }
     }
 
     protected void createCloudWatchAlarms() {
@@ -477,10 +486,6 @@ public class EthereumBeaconChainNode extends Stack {
         return getServiceToggle(enableValidator);
     }
 
-    protected String getAlarmThresholds() {
-        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmThresholds");
-    }
-
     protected InitCommand createBeaconChainMonitoringInitCommand() {
         if (enableBeaconChainMonitoring()) {
             return InitCommand.shellCommand(
@@ -504,6 +509,22 @@ public class EthereumBeaconChainNode extends Stack {
 
     protected Boolean createAlarms() {
         return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:createAlarms"));
+    }
+
+    protected String getAlarmThresholds() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmThresholds");
+    }
+
+    protected Boolean restartGethOnHighMem() {
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:restartGethOnHighMem"));
+    }
+
+    protected Boolean sendAlarmNotificationEmail() {
+        return StringUtils.isNotBlank(getAlarmNotificationEmail());
+    }
+
+    protected String getAlarmNotificationEmail() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmNotificationEmail");
     }
 
     protected String getServiceToggle(Boolean enabled) {
