@@ -127,7 +127,7 @@ public class EthereumBeaconChainNode extends Stack {
         this.cloudWatchAlarmsTopic.grantPublish(ServicePrincipal.Builder.create("cloudwatch.amazonaws.com").build());
         if(sendAlarmNotificationEmail()) {
             Subscription.Builder.create(this, "beaconChainAlarmEmails")
-                .protocol(SubscriptionProtocol.EMAIL)
+                .protocol(SubscriptionProtocol.EMAIL_JSON)
                 .endpoint(getAlarmNotificationEmail())
                 .topic(this.cloudWatchAlarmsTopic)
                 .build();
@@ -180,7 +180,7 @@ public class EthereumBeaconChainNode extends Stack {
             .treatMissingData(TreatMissingData.BREACHING)
             .build()
                 .addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
-        Alarm.Builder.create(this, "memoryHigh")
+        Alarm highMem = Alarm.Builder.create(this, "memoryHigh")
             .alarmDescription("Fires when memory utilization rises above the configured threshold.")
             .alarmName("beaconChainMemHigh")
             .metric(Metric.Builder.create()
@@ -201,8 +201,13 @@ public class EthereumBeaconChainNode extends Stack {
             .threshold(thresholdsMap.get("MemHigh"))
             .treatMissingData(TreatMissingData.BREACHING)
             .actionsEnabled(Boolean.TRUE)
-            .build()
-                .addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
+            .build();
+            
+            highMem.addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
+
+            if (restartGethOnHighMem()) {
+                // TODO
+            }
     }
 
     protected Map<String, Number> getAlarmThresholdsMap() {
