@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import software.amazon.awscdk.core.Construct;
@@ -123,6 +125,7 @@ public class EthereumBeaconChainNode extends Stack {
     }
 
     protected void createCloudWatchAlarms() {
+        Map<String, Number> thresholdsMap = getAlarmThresholdsMap();
         Alarm.Builder.create(this, "cpuLowAlarm")
             .alarmDescription("Fires when CPU utilization falls below the configured threshold.")
             .alarmName("beaconChainCpuLow")
@@ -141,7 +144,7 @@ public class EthereumBeaconChainNode extends Stack {
             .datapointsToAlarm(2)
             .evaluationPeriods(2)
             .comparisonOperator(ComparisonOperator.LESS_THAN_THRESHOLD)
-            .threshold(Integer.valueOf(40))
+            .threshold(thresholdsMap.get("CpuLow"))
             .treatMissingData(TreatMissingData.BREACHING)
             .build();
         Alarm.Builder.create(this, "cpuHigh")
@@ -162,7 +165,7 @@ public class EthereumBeaconChainNode extends Stack {
             .datapointsToAlarm(2)
             .evaluationPeriods(2)
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
-            .threshold(Integer.valueOf(90))
+            .threshold(thresholdsMap.get("CpuHigh"))
             .treatMissingData(TreatMissingData.BREACHING)
             .build();
         Alarm.Builder.create(this, "memoryHigh")
@@ -172,7 +175,7 @@ public class EthereumBeaconChainNode extends Stack {
                 .namespace("EthBeaconChain")
                 .metricName("mem_used")
                 .statistic(Statistic.AVERAGE.name())
-                .period(Duration.minutes(5))
+                .period(Duration.minutes(1))
                 .dimensions(new HashMap<String, Object>(){
                     {
                         put("AutoScalingGroupName", EthereumBeaconChainNode.this.getAutoscalingGroup().getAutoScalingGroupName());
@@ -180,14 +183,29 @@ public class EthereumBeaconChainNode extends Stack {
                 })
                 .build()
             )
-            .datapointsToAlarm(1)
-            .evaluationPeriods(1)
+            .datapointsToAlarm(3)
+            .evaluationPeriods(5)
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
-            .threshold(Double.valueOf(7000000000d))
+            .threshold(thresholdsMap.get("MemHigh"))
             .treatMissingData(TreatMissingData.BREACHING)
             .build();
     }
 
+    protected Map<String, Number> getAlarmThresholdsMap() {
+        Map<String, Number> alarmThresholdsMap = new HashMap<String, Number>();
+        String thresholdCsv = getAlarmThresholds();
+        List<String> thresholdList = Arrays.asList(StringUtils.splitPreserveAllTokens(thresholdCsv, ","));
+        for (String threshold : thresholdList) {
+            String[] thresholdPair = StringUtils.splitPreserveAllTokens(threshold, "=");
+            alarmThresholdsMap.put(
+                thresholdPair[0], 
+                thresholdPair[1].endsWith("d") ? 
+                    Double.valueOf(thresholdPair[1]) : 
+                    Integer.valueOf(thresholdPair[1]));
+
+        }
+        return alarmThresholdsMap;
+    }
     private void allowSessionManagerAccess() {
         // Allow session manager connections
         // TODO does this need to be more restrictive?
@@ -452,6 +470,10 @@ public class EthereumBeaconChainNode extends Stack {
     protected String getLighthouseValidatorServiceToggle() {
         Boolean enableValidator = Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:enableValidator"));
         return getServiceToggle(enableValidator);
+    }
+
+    protected String getAlarmThresholds() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmThresholds");
     }
 
     protected InitCommand createBeaconChainMonitoringInitCommand() {
