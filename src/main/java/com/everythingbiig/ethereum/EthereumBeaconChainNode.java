@@ -51,9 +51,11 @@ import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.Policy;
 import software.amazon.awscdk.services.iam.PolicyStatement;
+import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.route53.ARecord;
 import software.amazon.awscdk.services.route53.RecordTarget;
 import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
+import software.amazon.awscdk.services.sns.Topic;
 
 
 
@@ -75,6 +77,7 @@ public class EthereumBeaconChainNode extends Stack {
     private AutoScalingGroup    autoscalingGroup      = null;
     private List<IVolume>       volumes        = null;
     private EthereumBeaconChainProps ethBeaconChainProps = null;
+    private Topic cloudWatchAlarmsTopic = null;
 
     public EthereumBeaconChainNode(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -103,9 +106,20 @@ public class EthereumBeaconChainNode extends Stack {
             createPrivateLoadBalancer();
         }
 
+        createCloudWatchAlarmsTopic();
+        
         if (createAlarms()) {
             createCloudWatchAlarms();
         }
+    }
+
+    protected void createCloudWatchAlarmsTopic() {
+        this.cloudWatchAlarmsTopic = Topic.Builder.create(this, "cloudWatchAlarms")
+            .displayName("CloudWatch Alarms")
+            .topicName("cloudwatch-alarms")
+            .fifo(Boolean.FALSE)
+            .build();
+        this.cloudWatchAlarmsTopic.grantPublish(ServicePrincipal.Builder.create("cloudwatch.amazonaws.com").build());
     }
 
     protected void createCloudWatchAlarms() {
