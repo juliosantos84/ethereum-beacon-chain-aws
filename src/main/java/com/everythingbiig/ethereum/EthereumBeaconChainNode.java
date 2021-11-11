@@ -27,6 +27,7 @@ import software.amazon.awscdk.services.cloudwatch.ComparisonOperator;
 import software.amazon.awscdk.services.cloudwatch.Metric;
 import software.amazon.awscdk.services.cloudwatch.Statistic;
 import software.amazon.awscdk.services.cloudwatch.TreatMissingData;
+import software.amazon.awscdk.services.cloudwatch.actions.SnsAction;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
 import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
@@ -146,7 +147,8 @@ public class EthereumBeaconChainNode extends Stack {
             .comparisonOperator(ComparisonOperator.LESS_THAN_THRESHOLD)
             .threshold(thresholdsMap.get("CpuLow"))
             .treatMissingData(TreatMissingData.BREACHING)
-            .build();
+            .build()
+                .addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
         Alarm.Builder.create(this, "cpuHigh")
             .alarmDescription("Fires when CPU utilization rises above the configured threshold.")
             .alarmName("beaconChainCpuHigh")
@@ -167,7 +169,8 @@ public class EthereumBeaconChainNode extends Stack {
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
             .threshold(thresholdsMap.get("CpuHigh"))
             .treatMissingData(TreatMissingData.BREACHING)
-            .build();
+            .build()
+                .addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
         Alarm.Builder.create(this, "memoryHigh")
             .alarmDescription("Fires when memory utilization rises above the configured threshold.")
             .alarmName("beaconChainMemHigh")
@@ -188,7 +191,9 @@ public class EthereumBeaconChainNode extends Stack {
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
             .threshold(thresholdsMap.get("MemHigh"))
             .treatMissingData(TreatMissingData.BREACHING)
-            .build();
+            .actionsEnabled(Boolean.TRUE)
+            .build()
+                .addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
     }
 
     protected Map<String, Number> getAlarmThresholdsMap() {
