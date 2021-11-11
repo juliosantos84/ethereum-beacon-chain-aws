@@ -50,6 +50,9 @@ import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationLoadBal
 import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationProtocol;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.Protocol;
+import software.amazon.awscdk.services.events.EventPattern;
+import software.amazon.awscdk.services.events.Rule;
+import software.amazon.awscdk.services.events.targets.AwsApi;
 import software.amazon.awscdk.services.iam.Effect;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.iam.Policy;
@@ -83,6 +86,7 @@ public class EthereumBeaconChainNode extends Stack {
     private List<IVolume>       volumes        = null;
     private EthereumBeaconChainProps ethBeaconChainProps = null;
     private Topic cloudWatchAlarmsTopic = null;
+    private Alarm highMemAlarm = null;
 
     public EthereumBeaconChainNode(final Construct scope, final String id) {
         this(scope, id, null, null);
@@ -116,6 +120,65 @@ public class EthereumBeaconChainNode extends Stack {
         if (createAlarms()) {
             createCloudWatchAlarms();
         }
+
+        if (restartGethOnHighMem()) {
+            createRestartGethEventRule();
+        }
+    }
+
+    protected void createRestartGethEventRule() {
+        Rule.Builder.create(this, "RestartGethOnHighMem")
+            .description("Runs 'sudo systemctl restart geth.service' on the beacon chain instances when mem_used is high.")
+            .enabled(Boolean.TRUE)
+            .ruleName("Restart-Geth-On-High-Mem")
+            .eventPattern(EventPattern.builder()
+                .source(Arrays.asList("aws.cloudwatch"))
+                .resources(Arrays.asList(this.highMemAlarm.getAlarmArn()))
+                .detailType(Arrays.asList("CloudWatch Alarm State Change"))
+                .detail(new HashMap<String, Object>() {{
+                    put("state", new HashMap<String, Object>(){{
+                        put("value", Arrays.asList("ALARM"));
+                    }});
+                }})
+                .build())
+            .targets(Arrays.asList(AwsApi.Builder.create()
+            /**
+            aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --document-version "1" \
+            --targets '[{"Key":"tag:Name","Values":["ethereumBeaconChainService/goeth/goeth"]}]' \
+            --parameters '{"workingDirectory":[""],"executionTimeout":["3600"],"commands":["sudo systemctl restart geth.service"]}' \
+            --timeout-seconds 600 \
+            --max-concurrency "50" \
+            --max-errors "0" \
+            --cloud-watch-output-config '{"CloudWatchOutputEnabled":true,"CloudWatchLogGroupName":"ssm-run-command"}' \
+            --region us-east-1
+            */
+                .service("ssm")
+                .action("SendCommand")
+                .parameters(new HashMap<String, String>() {
+                    {
+                        put("--document-name", "AWS-RunShellScript");
+                        put("--document-version", "1");
+                        put("--targets", String.format("[{\"Key\":\"tag:Name\",\"Values\":[\"%s\"]}]", 
+                            EthereumBeaconChainNode.this.autoscalingGroup.getAutoScalingGroupName()));
+                        put("--parameters", String.format("{\"workingDirectory\":[\"\"],\"executionTimeout\":[\"3600\"],\"commands\":[\"%s\"]}", 
+                            EthereumBeaconChainNode.this.getRestartCommand("geth")));
+                        put("--timeout-seconds", "60");
+                        put("--max-concurrency", "\"1\"");
+                        put("--max-errors", "\"3\"");
+                        put("--cloud-watch-output-config", "{\"CloudWatchOutputEnabled\":true,\"CloudWatchLogGroupName\":\"ssm-run-command\"}");
+                        put("--region", EthereumBeaconChainNode.this.getRegion());
+                    }
+                })
+                .build()))
+            .build();
+        
+    }
+
+    protected String getRestartCommand(String service) {
+        // return "sudo systemctl restart geth.service";
+        return String.format("echo 'restarting %s'", service);
     }
 
     protected void createCloudWatchAlarmsTopic() {
@@ -180,7 +243,7 @@ public class EthereumBeaconChainNode extends Stack {
             .treatMissingData(TreatMissingData.BREACHING)
             .build()
                 .addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
-        Alarm highMem = Alarm.Builder.create(this, "memoryHigh")
+        this.highMemAlarm = Alarm.Builder.create(this, "memoryHigh")
             .alarmDescription("Fires when memory utilization rises above the configured threshold.")
             .alarmName("beaconChainMemHigh")
             .metric(Metric.Builder.create()
@@ -203,11 +266,7 @@ public class EthereumBeaconChainNode extends Stack {
             .actionsEnabled(Boolean.TRUE)
             .build();
             
-            highMem.addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
-
-            if (restartGethOnHighMem()) {
-                // TODO
-            }
+            this.highMemAlarm.addAlarmAction(new SnsAction(this.cloudWatchAlarmsTopic));
     }
 
     protected Map<String, Number> getAlarmThresholdsMap() {

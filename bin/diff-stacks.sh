@@ -9,6 +9,6 @@ export BEACON_CHAIN_NETWORK=${BEACON_CHAIN_NETWORK:-"testnet"}
 # export CDK_DEPLOY_PROFILE_FLAG="--profile your profile"
 # export CDK_DEPLOY_STACK=""
 
-echo "Deploying beacon chain ${VERSION} on ${BEACON_CHAIN_NETWORK}"
+echo "Diffing beacon chain ${VERSION} against ${BEACON_CHAIN_NETWORK}"
 echo -e "Extra options:\n\t${CDK_DEPLOY_EXTRA_CONTEXT}"
 cdk diff ${CDK_DEPLOY_PROFILE_FLAG} ${CDK_DEPLOY_EXTRA_CONTEXT}
