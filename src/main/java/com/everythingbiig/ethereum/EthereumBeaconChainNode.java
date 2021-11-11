@@ -3,6 +3,7 @@ package com.everythingbiig.ethereum;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.jetbrains.annotations.NotNull;
@@ -23,6 +24,7 @@ import software.amazon.awscdk.services.cloudwatch.Alarm;
 import software.amazon.awscdk.services.cloudwatch.ComparisonOperator;
 import software.amazon.awscdk.services.cloudwatch.Metric;
 import software.amazon.awscdk.services.cloudwatch.Statistic;
+import software.amazon.awscdk.services.cloudwatch.TreatMissingData;
 import software.amazon.awscdk.services.ec2.CloudFormationInit;
 import software.amazon.awscdk.services.ec2.IMachineImage;
 import software.amazon.awscdk.services.ec2.IPeer;
@@ -115,12 +117,18 @@ public class EthereumBeaconChainNode extends Stack {
                 .metricName("CPUUtilization")
                 .statistic(Statistic.AVERAGE.name())
                 .period(Duration.minutes(5))
+                .dimensions(new HashMap<String, Object>(){
+                    {
+                        put("AutoScalingGroupName", EthereumBeaconChainNode.this.getAutoscalingGroup().getAutoScalingGroupName());
+                    }
+                })
                 .build()
             )
             .datapointsToAlarm(2)
             .evaluationPeriods(2)
             .comparisonOperator(ComparisonOperator.LESS_THAN_THRESHOLD)
             .threshold(Integer.valueOf(40))
+            .treatMissingData(TreatMissingData.BREACHING)
             .build();
         Alarm.Builder.create(this, "cpuHigh")
             .alarmDescription("Fires when CPU utilization rises above the configured threshold.")
@@ -130,12 +138,18 @@ public class EthereumBeaconChainNode extends Stack {
                 .metricName("CPUUtilization")
                 .statistic(Statistic.AVERAGE.name())
                 .period(Duration.minutes(5))
+                .dimensions(new HashMap<String, Object>(){
+                    {
+                        put("AutoScalingGroupName", EthereumBeaconChainNode.this.getAutoscalingGroup().getAutoScalingGroupName());
+                    }
+                })
                 .build()
             )
             .datapointsToAlarm(2)
             .evaluationPeriods(2)
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
             .threshold(Integer.valueOf(90))
+            .treatMissingData(TreatMissingData.BREACHING)
             .build();
         Alarm.Builder.create(this, "memoryHigh")
             .alarmDescription("Fires when memory utilization rises above the configured threshold.")
@@ -145,12 +159,18 @@ public class EthereumBeaconChainNode extends Stack {
                 .metricName("mem_used")
                 .statistic(Statistic.AVERAGE.name())
                 .period(Duration.minutes(5))
+                .dimensions(new HashMap<String, Object>(){
+                    {
+                        put("AutoScalingGroupName", EthereumBeaconChainNode.this.getAutoscalingGroup().getAutoScalingGroupName());
+                    }
+                })
                 .build()
             )
             .datapointsToAlarm(1)
             .evaluationPeriods(1)
             .comparisonOperator(ComparisonOperator.GREATER_THAN_THRESHOLD)
             .threshold(Double.valueOf(7000000000d))
+            .treatMissingData(TreatMissingData.BREACHING)
             .build();
     }
 
