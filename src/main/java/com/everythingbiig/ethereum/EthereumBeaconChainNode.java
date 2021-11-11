@@ -121,7 +121,7 @@ public class EthereumBeaconChainNode extends Stack {
             createCloudWatchAlarms();
         }
 
-        if (restartGethOnHighMem()) {
+        if (shouldRestartGethOnHighMem()) {
             createRestartGethEventRule();
         }
     }
@@ -188,7 +188,7 @@ public class EthereumBeaconChainNode extends Stack {
             .fifo(Boolean.FALSE)
             .build();
         this.cloudWatchAlarmsTopic.grantPublish(ServicePrincipal.Builder.create("cloudwatch.amazonaws.com").build());
-        if(sendAlarmNotificationEmail()) {
+        if(shouldSendAlarmNotificationEmail()) {
             Subscription.Builder.create(this, "beaconChainAlarmEmails")
                 .protocol(SubscriptionProtocol.EMAIL_JSON)
                 .endpoint(getAlarmNotificationEmail())
@@ -486,6 +486,7 @@ public class EthereumBeaconChainNode extends Stack {
             createServiceConfigurationInitCommand("lighthousevalidator", this.ethBeaconChainProps.getBeaconChainEnvironment()),
             // Customize env vars
             createBeaconChainMonitoringInitCommand(),
+            createEth1EndpointsOverrideInitCommand(),
             // Start services
             createServiceToggleInitCommand("geth", enableService()),
             createServiceToggleInitCommand(enableBeaconChainMonitoring() ? "lighthousebeacon-ext-monitoring" : "lighthousebeacon", getLighthouseBeaconServiceToggle()),
@@ -554,11 +555,21 @@ public class EthereumBeaconChainNode extends Stack {
         if (enableBeaconChainMonitoring()) {
             return InitCommand.shellCommand(
                 String.format("echo 'Beaconchain monitoring enabled, adding LIGHTHOUSE_MONITORING_ENDPOINT_FLAG to service.env...' && echo 'LIGHTHOUSE_MONITORING_ENDPOINT=\"%s\"' | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null", beaconChainMonitoringEndpoint())
-                // To pipe to env file forrreal: | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null
-                , InitCommandOptions.builder().ignoreErrors(Boolean.TRUE).build()
+                , InitCommandOptions.builder().ignoreErrors(Boolean.FALSE).build()
             );
         } else {
             return InitCommand.shellCommand("echo 'Beaconchain monitoring is not enabled.'");
+        }
+    }
+
+    protected InitCommand createEth1EndpointsOverrideInitCommand() {
+        if (StringUtils.isNotBlank(getEth1EndpointsOverride())) {
+            return InitCommand.shellCommand(
+                String.format("echo 'Addl Eth1 endpoints enabled, appending LIGHTHOUSE_ETH1_ENDPOINTS to service.env...' && echo 'LIGHTHOUSE_ETH1_ENDPOINTS=\"%s\"' | sudo tee -a /etc/systemd/system/lighthousebeacon.service.env > /dev/null", getEth1EndpointsOverride())
+                , InitCommandOptions.builder().ignoreErrors(Boolean.FALSE).build()
+            );
+        } else {
+            return InitCommand.shellCommand("echo 'Addl Eth1 endpoints are not enabled.'");
         }
     }
 
@@ -579,11 +590,11 @@ public class EthereumBeaconChainNode extends Stack {
         return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmThresholds");
     }
 
-    protected Boolean restartGethOnHighMem() {
+    protected Boolean shouldRestartGethOnHighMem() {
         return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:restartGethOnHighMem"));
     }
 
-    protected Boolean sendAlarmNotificationEmail() {
+    protected Boolean shouldSendAlarmNotificationEmail() {
         return StringUtils.isNotBlank(getAlarmNotificationEmail());
     }
 
@@ -591,6 +602,11 @@ public class EthereumBeaconChainNode extends Stack {
         return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmNotificationEmail");
     }
 
+    protected String getEth1EndpointsOverride() {
+        return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:eth1Endpoints");
+    }
+
+    
     protected String getServiceToggle(Boolean enabled) {
         return enabled ? enableService() : disableService();
     }
