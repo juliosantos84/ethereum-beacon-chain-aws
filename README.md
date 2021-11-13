@@ -41,6 +41,8 @@ CDK_DEPLOY_STACK="ethereumBeaconChainService/goeth"
 bin/deploy-stacks.sh
 ```
 
+Look at `bin/deploy-stacks.sh` and other commands for configuration options like `CDK_DEPLOY_EXTRA_CONTEXT` that allow you to customize your deployment.
+
 After deploying, scale up the ASGs.  You can run 
 ```bash
 export ASG_NAME=<your asg name> 
@@ -48,5 +50,6 @@ export ASG_DESIRED_CAPACITY=1
 bin/set-desired-capacity.sh
 ```
 ## Todo
-- Add healthcheck/watchdog to replace "bad" instances.
+- Add healthcheck/watchdog to replace "bad" instances - in progress
 - Automate validator import.
+- Allow explicitly specifying availability zone for deployment

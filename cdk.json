@@ -26,7 +26,7 @@
     "everythingbiig/ethereum-beacon-chain-aws:createAlarms": "false",
     "everythingbiig/ethereum-beacon-chain-aws:alarmNotificationEmail": "",
     "everythingbiig/ethereum-beacon-chain-aws:alarmThresholds": "MemHigh=6800000000d,CpuHigh=90,CpuLow=40",
-    "everythingbiig/ethereum-beacon-chain-aws:restartGethOnHighMem": "false",
+    "everythingbiig/ethereum-beacon-chain-aws:runCommandOnHighMem": "",
     "everythingbiig/ethereum-beacon-chain-aws:createLoadbalancer": "false",
     "everythingbiig/ethereum-beacon-chain-aws:beaconChainMonitoringEndpoint": "",
     "everythingbiig/ethereum-beacon-chain-aws:eth1Endpoints": ""

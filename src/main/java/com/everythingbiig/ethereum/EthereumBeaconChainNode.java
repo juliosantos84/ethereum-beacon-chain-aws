@@ -121,12 +121,12 @@ public class EthereumBeaconChainNode extends Stack {
             createCloudWatchAlarms();
         }
 
-        if (shouldRestartGethOnHighMem()) {
-            createRestartGethEventRule();
+        if (shouldRunCommandOnHighMem()) {
+            createRunCommandOnHighMemEventRule();
         }
     }
 
-    protected void createRestartGethEventRule() {
+    protected void createRunCommandOnHighMemEventRule() {
         Rule.Builder.create(this, "RestartGethOnHighMem")
             .description("Runs 'sudo systemctl restart geth.service' on the beacon chain instances when mem_used is high.")
             .enabled(Boolean.TRUE)
@@ -154,31 +154,33 @@ public class EthereumBeaconChainNode extends Stack {
             --cloud-watch-output-config '{"CloudWatchOutputEnabled":true,"CloudWatchLogGroupName":"ssm-run-command"}' \
             --region us-east-1
             */
-                .service("ssm")
-                .action("SendCommand")
-                .parameters(new HashMap<String, String>() {
+                .service("SSM")
+                .action("sendCommand")
+                .parameters(new HashMap<String, Object>() {
                     {
-                        put("--document-name", "AWS-RunShellScript");
-                        put("--document-version", "1");
-                        put("--targets", String.format("[{\"Key\":\"tag:Name\",\"Values\":[\"%s\"]}]", 
-                            EthereumBeaconChainNode.this.autoscalingGroup.getAutoScalingGroupName()));
-                        put("--parameters", String.format("{\"workingDirectory\":[\"\"],\"executionTimeout\":[\"3600\"],\"commands\":[\"%s\"]}", 
-                            EthereumBeaconChainNode.this.getRestartCommand("geth")));
-                        put("--timeout-seconds", "60");
-                        put("--max-concurrency", "\"1\"");
-                        put("--max-errors", "\"3\"");
-                        put("--cloud-watch-output-config", "{\"CloudWatchOutputEnabled\":true,\"CloudWatchLogGroupName\":\"ssm-run-command\"}");
-                        put("--region", EthereumBeaconChainNode.this.getRegion());
+                        put("DocumentName", "AWS-RunShellScript");
+                        put("DocumentVersion", "1");
+                        put("Targets", Arrays.asList(new HashMap<String, Object>() {{
+                            put("Key", "tag:Name");
+                            put("Values", Arrays.asList(EthereumBeaconChainNode.this.autoscalingGroup.getAutoScalingGroupName()));
+                        }}));
+                        put("Parameters", new HashMap<String, Object>(){{
+                            put("WorkingDirectory", Arrays.asList(""));
+                            put("ExecutionTimeout", Arrays.asList("3600"));
+                            put("Commands", Arrays.asList("sudo systemctl restart geth.service"));
+                        }});
+                        put("TimeoutSeconds", "60");
+                        put("MaxConcurrency", "1");
+                        put("MaxErrors", "3");
+                        put("CloudWatchOutputConfig", new HashMap<String, Object>(){{
+                            put("CloudWatchOutputEnabled", Boolean.TRUE);
+                            put("CloudWatchLogGroupName", "ssm-run-command");
+                        }});
                     }
                 })
                 .build()))
             .build();
         
-    }
-
-    protected String getRestartCommand(String service) {
-        // return "sudo systemctl restart geth.service";
-        return String.format("echo 'restarting %s'", service);
     }
 
     protected void createCloudWatchAlarmsTopic() {
@@ -590,8 +592,8 @@ public class EthereumBeaconChainNode extends Stack {
         return (String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:alarmThresholds");
     }
 
-    protected Boolean shouldRestartGethOnHighMem() {
-        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:restartGethOnHighMem"));
+    protected Boolean shouldRunCommandOnHighMem() {
+        return Boolean.valueOf((String) super.getNode().tryGetContext("everythingbiig/ethereum-beacon-chain-aws:runCommandOnHighMem"));
     }
 
     protected Boolean shouldSendAlarmNotificationEmail() {
