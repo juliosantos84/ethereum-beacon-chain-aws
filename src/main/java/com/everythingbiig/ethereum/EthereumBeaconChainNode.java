@@ -161,8 +161,8 @@ public class EthereumBeaconChainNode extends Stack {
                         put("DocumentName", "AWS-RunShellScript");
                         put("DocumentVersion", "1");
                         put("Targets", Arrays.asList(new HashMap<String, Object>() {{
-                            put("Key", "tag:Name");
-                            put("Values", Arrays.asList("ethereumBeaconChainService/goeth/goeth"));
+                            put("Key", "tag:aws:autoscaling:groupName");
+                            put("Values", Arrays.asList(EthereumBeaconChainNode.this.getAutoscalingGroup().getAutoScalingGroupName()));
                         }}));
                         put("Parameters", new HashMap<String, Object>(){{
                             put("workingDirectory", Arrays.asList(""));
