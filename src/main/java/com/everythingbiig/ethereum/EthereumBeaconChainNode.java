@@ -162,7 +162,7 @@ public class EthereumBeaconChainNode extends Stack {
                         put("DocumentVersion", "1");
                         put("Targets", Arrays.asList(new HashMap<String, Object>() {{
                             put("Key", "tag:Name");
-                            put("Values", Arrays.asList(EthereumBeaconChainNode.this.autoscalingGroup.getAutoScalingGroupName()));
+                            put("Values", Arrays.asList("ethereumBeaconChainService/goeth/goeth"));
                         }}));
                         put("Parameters", new HashMap<String, Object>(){{
                             put("workingDirectory", Arrays.asList(""));
