@@ -165,9 +165,9 @@ public class EthereumBeaconChainNode extends Stack {
                             put("Values", Arrays.asList(EthereumBeaconChainNode.this.autoscalingGroup.getAutoScalingGroupName()));
                         }}));
                         put("Parameters", new HashMap<String, Object>(){{
-                            put("WorkingDirectory", Arrays.asList(""));
-                            put("ExecutionTimeout", Arrays.asList("3600"));
-                            put("Commands", Arrays.asList("sudo systemctl restart geth.service"));
+                            put("workingDirectory", Arrays.asList(""));
+                            put("executionTimeout", Arrays.asList("3600"));
+                            put("commands", Arrays.asList("sudo systemctl restart geth.service"));
                         }});
                         put("TimeoutSeconds", "60");
                         put("MaxConcurrency", "1");
