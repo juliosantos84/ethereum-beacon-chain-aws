@@ -39,9 +39,9 @@ Additional apps can be built to respond to alert notifications via SNS.
 CDK will use your default AWS profile to extract the AWS account and region to deploy to, but this can be overridden via env vars:
 
 ```bash
-export CDK_DEPLOY_PROFILE_FLAG="--profile everythingbiigadmin"
+export CDK_DEPLOY_PROFILE_FLAG="--profile yourawsprofilename"
 # Optionally, you can override the account and region for CDK to use here
-export CDK_DEPLOY_ACCOUNT="213126473922"
+export CDK_DEPLOY_ACCOUNT="123456578910"
 export CDK_DEPLOY_REGION="us-east-2"
 ```
 
