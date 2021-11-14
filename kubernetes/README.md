@@ -1,4 +1,5 @@
 # kubernetes
+Ignore this for now.  Kubernetes turned out to be more work than it was worth for a single validator deployment.  May revisit later.
 
 # local dev
 ## install and run k3s
