@@ -10,6 +10,8 @@ If my work saves you time and you want to thank me, you can send me some ETH: `0
 ## Architecture
 A single-node, single-AZ deployment that runs geth and lighthouse services.
 
+![ethereum-beacon-chain-aws architecture](docs/ethereum-beacon-chain-aws.png)
+
 ### Availability
 An autoscaling group ensures we have at least 1 instance running at all times and a single-attach EBS volume persists chaindata across instance replacements.  If multiple instances are running, only one can acquire the storage and provide attestations/proposals.  This simple approach avoids accidental slashings.  Live deployments can be performed and the autoscaling group will replace instances in 3-6 minutes.  This often leads to a missed attestation, but no reward penalty.
 
